@@ -1,8 +1,8 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'ELIOLIA — Marketplace Minecraft',
-  description: 'Marketplace du serveur Arkunir. Achat, vente, emploi — par le clan Shining.',
+  title: 'ELIOLIA — Marketplace de la Shining',
+  description: 'La marketplace de la Shining sur le serveur Arkunir. Achat, vente, emploi.',
   icons: { icon: '/favicon.ico' },
 };
 

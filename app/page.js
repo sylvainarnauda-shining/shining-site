@@ -80,7 +80,7 @@ export default function Home() {
       <header className="header">
         <div>
           <div className="brand">ELIOLIA</div>
-          <span className="brand-sub">Marketplace Minecraft</span>
+          <span className="brand-sub">Marketplace de la Shining</span>
         </div>
         <div className="header-right">
           <span className="server-badge">Serveur Arkunir</span>
@@ -198,7 +198,7 @@ export default function Home() {
 
       {/* FOOTER */}
       <footer className="footer">
-        Eliolia — Marketplace du serveur Arkunir Survie Vanilla
+        Eliolia — Marketplace de la Shining · Serveur Arkunir
       </footer>
 
       {/* MODALS */}
