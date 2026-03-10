@@ -77,6 +77,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--t1);min-he
 .btn-book{padding:.35rem .8rem;background:linear-gradient(135deg,var(--p7),var(--p5));color:#fff;border:none;border-radius:6px;font-family:'Outfit',sans-serif;font-size:.7rem;font-weight:600;cursor:pointer;transition:all .2s}
 .btn-book:hover{box-shadow:0 3px 12px rgba(139,92,246,.3);transform:translateY(-1px)}
 
+/* ---- COORDS CARD ---- */
+.coords-card{display:flex;align-items:center;gap:1.2rem;margin-top:1rem;padding:1.1rem 1.3rem;background:linear-gradient(135deg,rgba(109,40,217,.06),rgba(139,92,246,.03));border:1px solid rgba(139,92,246,.15);border-radius:14px}
+.coords-icon{width:40px;height:40px;image-rendering:pixelated;flex-shrink:0}
+.coords-body{flex:1;min-width:0}
+.coords-body h3{font-size:.85rem;font-weight:700;margin-bottom:.1rem}
+.coords-body p{font-size:.72rem;color:var(--t2)}
+.coords-values{display:flex;gap:.5rem}
+.coord{display:flex;flex-direction:column;align-items:center;background:var(--bg);padding:.35rem .6rem;border-radius:8px;border:1px solid var(--border);font-family:'Space Mono',monospace;font-size:.82rem;font-weight:700;color:var(--p3);min-width:48px}
+.coord-label{font-family:'Outfit',sans-serif;font-size:.55rem;font-weight:600;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.1rem}
+
 /* ---- TABS ---- */
 .tabs{display:flex;gap:.35rem;margin-bottom:1.5rem}
 .tab{padding:.45rem 1.1rem;background:transparent;color:var(--t3);border:1px solid transparent;border-radius:100px;font-family:'Outfit',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .2s}

@@ -137,9 +137,19 @@ export default function Home(){
           </div>
         </div>
       </div>
+      <div className="coords-card">
+        <img src={W('Obsidian')} alt="" className="coords-icon" onError={e=>e.target.style.opacity='0'}/>
+        <div className="coords-body">
+          <h3>Portail du Nether — Entrée de la base</h3>
+          <p>Pour les échanges et visites, rendez-vous à notre portail</p>
+        </div>
+        <div className="coords-values">
+          <span className="coord"><span className="coord-label">X</span>338</span>
+          <span className="coord"><span className="coord-label">Y</span>60</span>
+          <span className="coord"><span className="coord-label">Z</span>-21</span>
+        </div>
+      </div>
     </section>
-
-    {/* MARKETPLACE */}
     <section className="section" id="market">
       <div className="section-label">Marketplace</div>
       <h2 className="section-heading">Offres actives</h2>
