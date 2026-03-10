@@ -84,10 +84,35 @@ export default function Home(){
 
   const load=useCallback(async()=>{
     try{const r=await fetch('/api/offers');const d=await r.json();if(Array.isArray(d))setOffers(d)}catch(e){console.error(e)}finally{setLoading(false)}
-    // Load farm status from DB
     try{const r2=await fetch('/api/settings?key=farm_xp_open');const d2=await r2.json();setFarmOpen(d2.value==='true')}catch(e){console.error(e)}
   },[]);
+
   useEffect(()=>{load()},[load]);
+
+  // Realtime: listen for DB changes via Supabase Realtime
+  useEffect(()=>{
+    let sub;
+    (async()=>{
+      try{
+        const{supabaseClient}=await import('../lib/supabase-client');
+        if(!supabaseClient)return;
+        sub=supabaseClient.channel('site-realtime')
+          .on('postgres_changes',{event:'*',schema:'public',table:'offers'},()=>{
+            fetch('/api/offers').then(r=>r.json()).then(d=>{if(Array.isArray(d))setOffers(d)}).catch(()=>{});
+          })
+          .on('postgres_changes',{event:'*',schema:'public',table:'settings'},()=>{
+            fetch('/api/settings?key=farm_xp_open').then(r=>r.json()).then(d=>{if(d.value)setFarmOpen(d.value==='true')}).catch(()=>{});
+          })
+          .subscribe();
+      }catch(e){console.error('Realtime error:',e)}
+    })();
+    // Fallback: poll every 10s in case realtime disconnects
+    const interval=setInterval(()=>{
+      fetch('/api/offers').then(r=>r.json()).then(d=>{if(Array.isArray(d))setOffers(d)}).catch(()=>{});
+      fetch('/api/settings?key=farm_xp_open').then(r=>r.json()).then(d=>{if(d.value)setFarmOpen(d.value==='true')}).catch(()=>{});
+    },10000);
+    return()=>{if(sub)sub.unsubscribe();clearInterval(interval)};
+  },[]);
   const fil=tab==='all'?offers:offers.filter(o=>o.type===tab);
 
   const toggleFarm=async()=>{
