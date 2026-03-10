@@ -1,8 +1,8 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'ELIOLIA — Marketplace de la Shining',
-  description: 'La marketplace de la Shining sur le serveur Arkunir. Achat, vente, emploi.',
+  title: 'SHINING — Marketplace Minecraft',
+  description: 'La marketplace du clan Shining sur le serveur Arkunir. Achat, vente, emploi, services.',
   icons: { icon: '/favicon.ico' },
 };
 
@@ -13,7 +13,7 @@ export default function RootLayout({ children }) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap"
           rel="stylesheet"
         />
       </head>

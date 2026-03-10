@@ -2,6 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
+// Minecraft item icons via mc.wiki / crafatar for skins
+const MC_ITEM = (item) => `https://mc.nerothe.com/img/1.21.1/${item}.png`;
+const MC_HEAD = (pseudo) => `https://mc-heads.net/avatar/${pseudo}/32`;
+const DIAMOND_ICON = MC_ITEM('diamond');
+
 export default function Home() {
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,16 +19,16 @@ export default function Home() {
   const [adminError, setAdminError] = useState('');
   const [showAdmin, setShowAdmin] = useState(false);
 
+  // XP Farm state
+  const [farmOpen, setFarmOpen] = useState(false);
+
   const fetchOffers = useCallback(async () => {
     try {
       const res = await fetch('/api/offers');
       const data = await res.json();
       if (Array.isArray(data)) setOffers(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchOffers(); }, [fetchOffers]);
@@ -40,7 +45,7 @@ export default function Home() {
       });
       if (res.ok) { setIsAdmin(true); fetchOffers(); }
       else setAdminError('Mot de passe incorrect');
-    } catch { setAdminError('Erreur de connexion'); }
+    } catch { setAdminError('Erreur'); }
   };
 
   const handleSaveOffer = async (data) => {
@@ -66,11 +71,8 @@ export default function Home() {
   };
 
   const handleDeleteOffer = async (id) => {
-    if (!confirm('Supprimer cette offre ?')) return;
-    await fetch(`/api/offers?id=${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${adminPw}` },
-    });
+    if (!confirm('Supprimer ?')) return;
+    await fetch(`/api/offers?id=${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${adminPw}` } });
     fetchOffers();
   };
 
@@ -78,27 +80,54 @@ export default function Home() {
     <>
       {/* HEADER */}
       <header className="header">
-        <div>
-          <div className="brand">ELIOLIA</div>
-          <span className="brand-sub">Marketplace de la Shining</span>
+        <div className="brand">
+          <div className="brand-icon">S</div>
+          <span className="brand-text">SHINING</span>
+          <span className="brand-dot">shining-mc.fr</span>
         </div>
         <div className="header-right">
-          <span className="server-badge">Serveur Arkunir</span>
+          <span className="pill">Serveur Arkunir</span>
           <button className="admin-btn" onClick={() => setShowAdmin(!showAdmin)}>
-            {isAdmin ? '⚙ Admin' : '🔒'}
+            {isAdmin ? '⚙' : '🔒'}
           </button>
         </div>
       </header>
 
-      {/* MAIN */}
       <main className="main">
+
+        {/* XP FARM SERVICE */}
+        <div className="section-title">Services</div>
+        <div className="service-card">
+          <img className="service-img" src={MC_ITEM('experience_bottle')} alt="XP" onError={(e) => { e.target.style.display = 'none'; }} />
+          <div className="service-info">
+            <h3>Ferme XP Silverfish</h3>
+            <p>Location de notre ferme à XP. Réserve ton créneau.</p>
+          </div>
+          <div className="service-price">
+            <img src={DIAMOND_ICON} alt="" onError={(e) => { e.target.style.display = 'none'; }} />
+            15
+          </div>
+          <span className={`service-status ${farmOpen ? 'status-open' : 'status-closed'}`}>
+            {farmOpen ? 'Ouvert' : 'Fermé'}
+          </span>
+          {isAdmin && (
+            <button
+              className={`btn-toggle ${farmOpen ? 'open' : 'close'}`}
+              onClick={() => setFarmOpen(!farmOpen)}
+            >
+              {farmOpen ? 'Fermer' : 'Ouvrir'}
+            </button>
+          )}
+        </div>
+
         {/* TABS */}
+        <div className="section-title" style={{ marginTop: '1.5rem' }}>Marketplace</div>
         <div className="tabs">
           {[
             { key: 'all', label: 'Tout' },
-            { key: 'achat', label: '🛒 Achats' },
-            { key: 'vente', label: '💰 Ventes' },
-            { key: 'emploi', label: '⛏️ Emplois' },
+            { key: 'achat', label: 'Achats' },
+            { key: 'vente', label: 'Ventes' },
+            { key: 'emploi', label: 'Emplois' },
           ].map(t => (
             <button key={t.key} className={`tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
               {t.label}
@@ -114,19 +143,26 @@ export default function Home() {
             {filtered.length === 0 ? (
               <div className="empty">
                 <span>📭</span>
-                Aucune offre active pour le moment.
+                Aucune offre active.
               </div>
             ) : (
               filtered.map(offer => (
                 <div key={offer.id} className="card">
-                  <div className={`badge badge-${offer.type}`}>
-                    {offer.type === 'achat' ? '🛒 Achat' : offer.type === 'vente' ? '💰 Vente' : '⛏️ Emploi'}
+                  <div className="card-top">
+                    <div className={`badge badge-${offer.type}`}>
+                      {offer.type === 'achat' ? 'Achat' : offer.type === 'vente' ? 'Vente' : 'Emploi'}
+                    </div>
                   </div>
                   <h3>{offer.title}</h3>
                   {offer.description && <p>{offer.description}</p>}
                   <div className="card-meta">
                     {offer.quantity && <span>📦 {offer.quantity}</span>}
-                    {offer.price && <span>💰 {offer.price}</span>}
+                    {offer.price && (
+                      <span>
+                        <img src={DIAMOND_ICON} alt="" onError={(e) => { e.target.style.display = 'none'; }} />
+                        {offer.price}
+                      </span>
+                    )}
                   </div>
                   <button className="btn-respond" onClick={() => setRespondModal(offer)}>
                     Je suis intéressé
@@ -142,7 +178,7 @@ export default function Home() {
           <section className="admin-section">
             {!isAdmin ? (
               <div className="admin-login">
-                <h2>🔒 Admin</h2>
+                <h2>Admin</h2>
                 <div className="admin-row">
                   <input
                     type="password"
@@ -158,10 +194,10 @@ export default function Home() {
             ) : (
               <div className="admin-panel">
                 <div className="admin-toolbar">
-                  <h2>Gestion des offres</h2>
+                  <h2>Gestion</h2>
                   <div className="admin-btns">
                     <button className="btn-add" onClick={() => { setEditingOffer(null); setAdminModal(true); }}>
-                      + Nouvelle offre
+                      + Offre
                     </button>
                     <button className="btn-logout" onClick={() => { setIsAdmin(false); setAdminPw(''); setShowAdmin(false); }}>
                       Déco
@@ -176,10 +212,10 @@ export default function Home() {
                       <div key={offer.id} className="admin-item">
                         <div className="admin-item-info">
                           <h4>
-                            <span className={`badge badge-${offer.type}`} style={{ marginRight: '0.4rem' }}>{offer.type}</span>
+                            <span className={`badge badge-${offer.type}`} style={{ marginRight: '0.3rem' }}>{offer.type}</span>
                             {offer.title}
                           </h4>
-                          <span>{offer.description?.slice(0, 70)}{offer.description?.length > 70 ? '…' : ''}</span>
+                          <span>{offer.description?.slice(0, 60)}{offer.description?.length > 60 ? '…' : ''}</span>
                         </div>
                         <div className="admin-actions">
                           <button className="btn-sm edit" onClick={() => { setEditingOffer(offer); setAdminModal(true); }}>Modifier</button>
@@ -196,12 +232,10 @@ export default function Home() {
         )}
       </main>
 
-      {/* FOOTER */}
       <footer className="footer">
-        Eliolia — Marketplace de la Shining · Serveur Arkunir
+        Shining — Marketplace du serveur Arkunir
       </footer>
 
-      {/* MODALS */}
       {respondModal && <RespondModal offer={respondModal} onClose={() => setRespondModal(null)} />}
       {adminModal && <OfferForm offer={editingOffer} onClose={() => { setAdminModal(false); setEditingOffer(null); }} onSave={handleSaveOffer} />}
     </>
@@ -215,6 +249,13 @@ function RespondModal({ offer, onClose }) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [debouncedPseudo, setDebouncedPseudo] = useState('');
+
+  // Debounce pseudo for skin preview
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedPseudo(pseudo.trim()), 500);
+    return () => clearTimeout(t);
+  }, [pseudo]);
 
   const submit = async () => {
     if (!pseudo.trim()) return;
@@ -252,6 +293,12 @@ function RespondModal({ offer, onClose }) {
             <div className="field">
               <label>Pseudo Minecraft *</label>
               <input value={pseudo} onChange={e => setPseudo(e.target.value)} placeholder="Ton pseudo in-game" />
+              {debouncedPseudo && (
+                <div className="skin-preview">
+                  <img src={MC_HEAD(debouncedPseudo)} alt="" />
+                  <span>{debouncedPseudo}</span>
+                </div>
+              )}
             </div>
             <div className="field">
               <label>Pseudo Discord</label>
@@ -296,9 +343,9 @@ function OfferForm({ offer, onClose, onSave }) {
         <div className="field">
           <label>Type</label>
           <select value={type} onChange={e => setType(e.target.value)}>
-            <option value="vente">💰 Vente</option>
-            <option value="achat">🛒 Achat</option>
-            <option value="emploi">⛏️ Emploi</option>
+            <option value="vente">Vente</option>
+            <option value="achat">Achat</option>
+            <option value="emploi">Emploi</option>
           </select>
         </div>
         <div className="field">
@@ -315,7 +362,7 @@ function OfferForm({ offer, onClose, onSave }) {
         </div>
         <div className="field">
           <label>Prix</label>
-          <input value={price} onChange={e => setPrice(e.target.value)} placeholder="Ex: 12 blocs d'émeraude" />
+          <input value={price} onChange={e => setPrice(e.target.value)} placeholder="Ex: 12 diamants" />
         </div>
         <button className="btn-submit" onClick={submit} disabled={!title.trim() || saving}>
           {saving ? 'Sauvegarde…' : offer ? 'Mettre à jour' : 'Publier'}
