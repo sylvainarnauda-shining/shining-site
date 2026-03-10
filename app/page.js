@@ -2,249 +2,129 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-// ==========================================
-// SHINING CLAN — Main One-Page Site
-// ==========================================
-
 export default function Home() {
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('all');
-  const [scrolled, setScrolled] = useState(false);
-
-  // Modal state
-  const [respondModal, setRespondModal] = useState(null); // offer object or null
+  const [tab, setTab] = useState('all');
+  const [respondModal, setRespondModal] = useState(null);
   const [adminModal, setAdminModal] = useState(false);
   const [editingOffer, setEditingOffer] = useState(null);
-
-  // Admin state
-  const [adminPassword, setAdminPassword] = useState('');
+  const [adminPw, setAdminPw] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminError, setAdminError] = useState('');
   const [showAdmin, setShowAdmin] = useState(false);
 
-  // Fetch offers
   const fetchOffers = useCallback(async () => {
     try {
       const res = await fetch('/api/offers');
       const data = await res.json();
       if (Array.isArray(data)) setOffers(data);
     } catch (err) {
-      console.error('Erreur chargement offres:', err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    fetchOffers();
-  }, [fetchOffers]);
+  useEffect(() => { fetchOffers(); }, [fetchOffers]);
 
-  // Scroll detection for navbar
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 50);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  const filtered = tab === 'all' ? offers : offers.filter(o => o.type === tab);
 
-  // Filter offers by tab
-  const filtered = activeTab === 'all' ? offers : offers.filter(o => o.type === activeTab);
-
-  // Admin login
   const handleAdminLogin = async () => {
     setAdminError('');
     try {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: adminPassword }),
+        body: JSON.stringify({ password: adminPw }),
       });
-      if (res.ok) {
-        setIsAdmin(true);
-        fetchOffers();
-      } else {
-        setAdminError('Mot de passe incorrect');
-      }
-    } catch {
-      setAdminError('Erreur de connexion');
-    }
+      if (res.ok) { setIsAdmin(true); fetchOffers(); }
+      else setAdminError('Mot de passe incorrect');
+    } catch { setAdminError('Erreur de connexion'); }
   };
 
-  // Admin: create/update offer
-  const handleSaveOffer = async (formData) => {
+  const handleSaveOffer = async (data) => {
     const method = editingOffer ? 'PUT' : 'POST';
-    const body = editingOffer ? { ...formData, id: editingOffer.id } : formData;
-
+    const body = editingOffer ? { ...data, id: editingOffer.id } : data;
     try {
       const res = await fetch('/api/offers', {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${adminPassword}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminPw}` },
         body: JSON.stringify(body),
       });
-      if (res.ok) {
-        setAdminModal(false);
-        setEditingOffer(null);
-        fetchOffers();
-      }
-    } catch (err) {
-      console.error('Erreur sauvegarde:', err);
-    }
+      if (res.ok) { setAdminModal(false); setEditingOffer(null); fetchOffers(); }
+    } catch (err) { console.error(err); }
   };
 
-  // Admin: close offer
   const handleCloseOffer = async (offer) => {
-    try {
-      await fetch('/api/offers', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${adminPassword}`,
-        },
-        body: JSON.stringify({ ...offer, status: 'closed' }),
-      });
-      fetchOffers();
-    } catch (err) {
-      console.error('Erreur fermeture:', err);
-    }
+    await fetch('/api/offers', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminPw}` },
+      body: JSON.stringify({ ...offer, status: 'closed' }),
+    });
+    fetchOffers();
   };
 
-  // Admin: delete offer
   const handleDeleteOffer = async (id) => {
     if (!confirm('Supprimer cette offre ?')) return;
-    try {
-      await fetch(`/api/offers?id=${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${adminPassword}` },
-      });
-      fetchOffers();
-    } catch (err) {
-      console.error('Erreur suppression:', err);
-    }
+    await fetch(`/api/offers?id=${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${adminPw}` },
+    });
+    fetchOffers();
   };
 
   return (
     <>
-      {/* ---- NAVBAR ---- */}
-      <nav className={`navbar ${scrolled ? 'scrolled' : ''}`}>
-        <a href="#" className="nav-brand">SHINING</a>
-        <ul className="nav-links">
-          <li><a href="#about">Le Clan</a></li>
-          <li><a href="#offers">Commerce</a></li>
-          <li>
-            <button className="admin-toggle" onClick={() => setShowAdmin(!showAdmin)}>
-              {isAdmin ? '⚙ Admin' : '🔒'}
-            </button>
-          </li>
-        </ul>
-      </nav>
-
-      {/* ---- HERO ---- */}
-      <section className="hero" id="top">
-        <div className="hero-particles">
-          {Array.from({ length: 30 }).map((_, i) => (
-            <div
-              key={i}
-              className="particle"
-              style={{
-                left: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 8}s`,
-                animationDuration: `${6 + Math.random() * 6}s`,
-              }}
-            />
-          ))}
+      {/* HEADER */}
+      <header className="header">
+        <div>
+          <div className="brand">ELIOLIA</div>
+          <span className="brand-sub">Marketplace Minecraft</span>
         </div>
-
-        <div className="hero-content">
-          <div className="hero-badge">Serveur Arkunir — Survie Vanilla</div>
-          <h1 className="hero-title">
-            S<span>HI</span>NING
-          </h1>
-          <p className="hero-subtitle">
-            Commerce. Puissance. Domination.
-            Le clan le plus influent du serveur.
-          </p>
-          <div className="hero-cta">
-            <a href="#offers" className="btn-primary">Voir nos offres</a>
-            <a href="#about" className="btn-secondary">Découvrir le clan</a>
-          </div>
+        <div className="header-right">
+          <span className="server-badge">Serveur Arkunir</span>
+          <button className="admin-btn" onClick={() => setShowAdmin(!showAdmin)}>
+            {isAdmin ? '⚙ Admin' : '🔒'}
+          </button>
         </div>
+      </header>
 
-        <div className="hero-scroll"><span /></div>
-      </section>
-
-      {/* ---- ABOUT ---- */}
-      <section className="section" id="about">
-        <div className="section-header">
-          <div className="section-label">Qui sommes-nous</div>
-          <h2 className="section-title">L&apos;Empire Shining</h2>
-          <div className="section-divider" />
-        </div>
-
-        <div className="about-grid">
-          <div className="about-card">
-            <div className="about-icon">⚔️</div>
-            <h3>Tryharders</h3>
-            <p>On ne fait pas les choses à moitié. Chaque projet est mené jusqu&apos;au bout, chaque base est une forteresse, chaque objectif est atteint.</p>
-          </div>
-          <div className="about-card">
-            <div className="about-icon">💎</div>
-            <h3>Commerce</h3>
-            <p>Achat, vente, emploi — notre économie tourne. On recrute des mineurs, on vend des ressources rares, on domine le marché du serveur.</p>
-          </div>
-          <div className="about-card">
-            <div className="about-icon">👑</div>
-            <h3>Recrutement</h3>
-            <p>Tu bosses bien pour nous ? On te remarque. Les meilleurs employés rejoignent nos rangs. Prouve ta valeur et intègre le clan.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* ---- OFFERS ---- */}
-      <section className="section" id="offers">
-        <div className="section-header">
-          <div className="section-label">Tableau de bord</div>
-          <h2 className="section-title">Offres actives</h2>
-          <div className="section-divider" />
-        </div>
-
-        <div className="offers-tabs">
+      {/* MAIN */}
+      <main className="main">
+        {/* TABS */}
+        <div className="tabs">
           {[
             { key: 'all', label: 'Tout' },
             { key: 'achat', label: '🛒 Achats' },
             { key: 'vente', label: '💰 Ventes' },
             { key: 'emploi', label: '⛏️ Emplois' },
-          ].map(tab => (
-            <button
-              key={tab.key}
-              className={`tab-btn ${activeTab === tab.key ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label}
+          ].map(t => (
+            <button key={t.key} className={`tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
+              {t.label}
             </button>
           ))}
         </div>
 
+        {/* OFFERS */}
         {loading ? (
-          <div className="loading-spinner"><div className="spinner" /></div>
+          <div className="spinner-wrap"><div className="spinner" /></div>
         ) : (
-          <div className="offers-grid">
+          <div className="grid">
             {filtered.length === 0 ? (
-              <div className="empty-state">
+              <div className="empty">
                 <span>📭</span>
                 Aucune offre active pour le moment.
               </div>
             ) : (
               filtered.map(offer => (
-                <div key={offer.id} className="offer-card">
-                  <div className={`offer-type-badge badge-${offer.type}`}>
+                <div key={offer.id} className="card">
+                  <div className={`badge badge-${offer.type}`}>
                     {offer.type === 'achat' ? '🛒 Achat' : offer.type === 'vente' ? '💰 Vente' : '⛏️ Emploi'}
                   </div>
                   <h3>{offer.title}</h3>
                   {offer.description && <p>{offer.description}</p>}
-                  <div className="offer-meta">
+                  <div className="card-meta">
                     {offer.quantity && <span>📦 {offer.quantity}</span>}
                     {offer.price && <span>💰 {offer.price}</span>}
                   </div>
@@ -256,106 +136,79 @@ export default function Home() {
             )}
           </div>
         )}
-      </section>
 
-      {/* ---- ADMIN SECTION ---- */}
-      {showAdmin && (
-        <section className="admin-section" id="admin">
-          {!isAdmin ? (
-            <div className="admin-login">
-              <h2>🔒 Accès Admin</h2>
-              <div className="admin-login-row">
-                <input
-                  type="password"
-                  placeholder="Mot de passe"
-                  value={adminPassword}
-                  onChange={e => setAdminPassword(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleAdminLogin()}
-                />
-                <button onClick={handleAdminLogin}>Entrer</button>
+        {/* ADMIN */}
+        {showAdmin && (
+          <section className="admin-section">
+            {!isAdmin ? (
+              <div className="admin-login">
+                <h2>🔒 Admin</h2>
+                <div className="admin-row">
+                  <input
+                    type="password"
+                    placeholder="Mot de passe"
+                    value={adminPw}
+                    onChange={e => setAdminPw(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAdminLogin()}
+                  />
+                  <button onClick={handleAdminLogin}>OK</button>
+                </div>
+                {adminError && <div className="admin-error">{adminError}</div>}
               </div>
-              {adminError && <div className="admin-error">{adminError}</div>}
-            </div>
-          ) : (
-            <div className="admin-panel">
-              <div className="admin-toolbar">
-                <h2>⚙ Gestion des offres</h2>
-                <div className="admin-btns">
-                  <button className="btn-add" onClick={() => { setEditingOffer(null); setAdminModal(true); }}>
-                    + Nouvelle offre
-                  </button>
-                  <button className="btn-logout" onClick={() => { setIsAdmin(false); setAdminPassword(''); setShowAdmin(false); }}>
-                    Déconnexion
-                  </button>
+            ) : (
+              <div className="admin-panel">
+                <div className="admin-toolbar">
+                  <h2>Gestion des offres</h2>
+                  <div className="admin-btns">
+                    <button className="btn-add" onClick={() => { setEditingOffer(null); setAdminModal(true); }}>
+                      + Nouvelle offre
+                    </button>
+                    <button className="btn-logout" onClick={() => { setIsAdmin(false); setAdminPw(''); setShowAdmin(false); }}>
+                      Déco
+                    </button>
+                  </div>
+                </div>
+                <div className="admin-list">
+                  {offers.length === 0 ? (
+                    <div className="empty"><span>📋</span>Aucune offre.</div>
+                  ) : (
+                    offers.map(offer => (
+                      <div key={offer.id} className="admin-item">
+                        <div className="admin-item-info">
+                          <h4>
+                            <span className={`badge badge-${offer.type}`} style={{ marginRight: '0.4rem' }}>{offer.type}</span>
+                            {offer.title}
+                          </h4>
+                          <span>{offer.description?.slice(0, 70)}{offer.description?.length > 70 ? '…' : ''}</span>
+                        </div>
+                        <div className="admin-actions">
+                          <button className="btn-sm edit" onClick={() => { setEditingOffer(offer); setAdminModal(true); }}>Modifier</button>
+                          <button className="btn-sm close-offer" onClick={() => handleCloseOffer(offer)}>Fermer</button>
+                          <button className="btn-sm delete" onClick={() => handleDeleteOffer(offer.id)}>Suppr</button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
+            )}
+          </section>
+        )}
+      </main>
 
-              <div className="admin-offers-list">
-                {offers.length === 0 ? (
-                  <div className="empty-state"><span>📋</span>Aucune offre créée.</div>
-                ) : (
-                  offers.map(offer => (
-                    <div key={offer.id} className="admin-offer-item">
-                      <div className="admin-offer-info">
-                        <h4>
-                          <span className={`offer-type-badge badge-${offer.type}`} style={{ marginRight: '0.5rem' }}>
-                            {offer.type}
-                          </span>
-                          {offer.title}
-                        </h4>
-                        <span>{offer.description?.slice(0, 80)}{offer.description?.length > 80 ? '…' : ''}</span>
-                      </div>
-                      <div className="admin-offer-actions">
-                        <button className="btn-edit" onClick={() => { setEditingOffer(offer); setAdminModal(true); }}>
-                          Modifier
-                        </button>
-                        <button className="btn-close-offer" onClick={() => handleCloseOffer(offer)}>
-                          Fermer
-                        </button>
-                        <button className="btn-delete" onClick={() => handleDeleteOffer(offer.id)}>
-                          Supprimer
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* ---- FOOTER ---- */}
+      {/* FOOTER */}
       <footer className="footer">
-        <a href="#top" className="nav-brand">SHINING</a>
-        <p>Clan Minecraft — Serveur Arkunir Survie Vanilla</p>
-        <p style={{ marginTop: '0.3rem', fontSize: '0.7rem' }}>eliolia.com</p>
+        Eliolia — Marketplace du serveur Arkunir Survie Vanilla
       </footer>
 
-      {/* ---- RESPOND MODAL ---- */}
-      {respondModal && (
-        <RespondModal
-          offer={respondModal}
-          onClose={() => setRespondModal(null)}
-        />
-      )}
-
-      {/* ---- ADMIN CREATE/EDIT MODAL ---- */}
-      {adminModal && (
-        <OfferFormModal
-          offer={editingOffer}
-          onClose={() => { setAdminModal(false); setEditingOffer(null); }}
-          onSave={handleSaveOffer}
-        />
-      )}
+      {/* MODALS */}
+      {respondModal && <RespondModal offer={respondModal} onClose={() => setRespondModal(null)} />}
+      {adminModal && <OfferForm offer={editingOffer} onClose={() => { setAdminModal(false); setEditingOffer(null); }} onSave={handleSaveOffer} />}
     </>
   );
 }
 
 
-// ==========================================
-// RESPOND MODAL (visitor submits interest)
-// ==========================================
 function RespondModal({ offer, onClose }) {
   const [pseudo, setPseudo] = useState('');
   const [discord, setDiscord] = useState('');
@@ -363,7 +216,7 @@ function RespondModal({ offer, onClose }) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
-  const handleSubmit = async () => {
+  const submit = async () => {
     if (!pseudo.trim()) return;
     setSending(true);
     try {
@@ -378,62 +231,38 @@ function RespondModal({ offer, onClose }) {
         }),
       });
       setSent(true);
-    } catch {
-      alert('Erreur lors de l\'envoi');
-    } finally {
-      setSending(false);
-    }
+    } catch { alert('Erreur'); }
+    finally { setSending(false); }
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose}>×</button>
-
         {sent ? (
           <div className="success-msg">
             <span>✅</span>
-            <h2>Envoyé !</h2>
-            <p>Ta candidature a été transmise au clan Shining via Discord.</p>
+            <p>Envoyé !</p>
+            <small>Ta réponse a été transmise sur notre Discord.</small>
           </div>
         ) : (
           <>
-            <h2>Répondre à l&apos;offre</h2>
+            <h2>Répondre</h2>
             <p>{offer.title}</p>
-
-            <div className="form-group">
+            <div className="field">
               <label>Pseudo Minecraft *</label>
-              <input
-                value={pseudo}
-                onChange={e => setPseudo(e.target.value)}
-                placeholder="Ton pseudo in-game"
-              />
+              <input value={pseudo} onChange={e => setPseudo(e.target.value)} placeholder="Ton pseudo in-game" />
             </div>
-
-            <div className="form-group">
+            <div className="field">
               <label>Pseudo Discord</label>
-              <input
-                value={discord}
-                onChange={e => setDiscord(e.target.value)}
-                placeholder="Optionnel"
-              />
+              <input value={discord} onChange={e => setDiscord(e.target.value)} placeholder="Optionnel" />
             </div>
-
-            <div className="form-group">
+            <div className="field">
               <label>Message</label>
-              <textarea
-                value={message}
-                onChange={e => setMessage(e.target.value)}
-                placeholder="Un mot pour le clan ? (optionnel)"
-              />
+              <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Optionnel" />
             </div>
-
-            <button
-              className="btn-submit"
-              onClick={handleSubmit}
-              disabled={!pseudo.trim() || sending}
-            >
-              {sending ? 'Envoi...' : 'Envoyer'}
+            <button className="btn-submit" onClick={submit} disabled={!pseudo.trim() || sending}>
+              {sending ? 'Envoi…' : 'Envoyer'}
             </button>
           </>
         )}
@@ -443,10 +272,7 @@ function RespondModal({ offer, onClose }) {
 }
 
 
-// ==========================================
-// OFFER FORM MODAL (admin creates/edits)
-// ==========================================
-function OfferFormModal({ offer, onClose, onSave }) {
+function OfferForm({ offer, onClose, onSave }) {
   const [type, setType] = useState(offer?.type || 'vente');
   const [title, setTitle] = useState(offer?.title || '');
   const [description, setDescription] = useState(offer?.description || '');
@@ -454,7 +280,7 @@ function OfferFormModal({ offer, onClose, onSave }) {
   const [price, setPrice] = useState(offer?.price || '');
   const [saving, setSaving] = useState(false);
 
-  const handleSubmit = async () => {
+  const submit = async () => {
     if (!title.trim()) return;
     setSaving(true);
     await onSave({ type, title: title.trim(), description: description.trim(), quantity, price });
@@ -462,13 +288,12 @@ function OfferFormModal({ offer, onClose, onSave }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose}>×</button>
-        <h2>{offer ? 'Modifier l\'offre' : 'Nouvelle offre'}</h2>
-        <p>Remplis les champs ci-dessous.</p>
-
-        <div className="form-group">
+        <h2>{offer ? 'Modifier' : 'Nouvelle offre'}</h2>
+        <p>Remplis les champs.</p>
+        <div className="field">
           <label>Type</label>
           <select value={type} onChange={e => setType(e.target.value)}>
             <option value="vente">💰 Vente</option>
@@ -476,29 +301,24 @@ function OfferFormModal({ offer, onClose, onSave }) {
             <option value="emploi">⛏️ Emploi</option>
           </select>
         </div>
-
-        <div className="form-group">
+        <div className="field">
           <label>Titre *</label>
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: Vente de 3 stacks de diamants" />
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: 3 stacks de diamants" />
         </div>
-
-        <div className="form-group">
+        <div className="field">
           <label>Description</label>
-          <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Détails de l'offre..." />
+          <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Détails…" />
         </div>
-
-        <div className="form-group">
+        <div className="field">
           <label>Quantité</label>
           <input value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="Ex: 3 stacks" />
         </div>
-
-        <div className="form-group">
+        <div className="field">
           <label>Prix</label>
           <input value={price} onChange={e => setPrice(e.target.value)} placeholder="Ex: 12 blocs d'émeraude" />
         </div>
-
-        <button className="btn-submit" onClick={handleSubmit} disabled={!title.trim() || saving}>
-          {saving ? 'Sauvegarde...' : offer ? 'Mettre à jour' : 'Publier l\'offre'}
+        <button className="btn-submit" onClick={submit} disabled={!title.trim() || saving}>
+          {saving ? 'Sauvegarde…' : offer ? 'Mettre à jour' : 'Publier'}
         </button>
       </div>
     </div>

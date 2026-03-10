@@ -1,8 +1,8 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'SHINING — Clan Minecraft',
-  description: 'Le clan le plus influent du serveur Arkunir. Commerce, recrutement, puissance.',
+  title: 'ELIOLIA — Marketplace Minecraft',
+  description: 'Marketplace du serveur Arkunir. Achat, vente, emploi — par le clan Shining.',
   icons: { icon: '/favicon.ico' },
 };
 
