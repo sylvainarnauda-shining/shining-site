@@ -127,7 +127,7 @@ export default function Home(){
           </div>
         </div>
         <div className="svc">
-          <img className="svc-icon" src={W('Compass')} alt="" onError={e=>e.target.style.opacity='0'}/>
+          <img className="svc-icon" src={W('Map')} alt="" onError={e=>e.target.style.opacity='0'}/>
           <div className="svc-body"><h3>Visite du clan</h3><p>Visite guidée de notre base — par personne</p></div>
           <div className="svc-right">
             <div className="svc-price"><img src={W('Diamond')} alt="" onError={e=>e.target.style.opacity='0'}/>2</div>
