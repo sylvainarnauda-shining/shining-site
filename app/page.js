@@ -126,6 +126,13 @@ export default function Home(){
             {isA&&<button className={`btn-toggle ${farmOpen?'open':'close'}`} onClick={()=>setFarmOpen(!farmOpen)}>{farmOpen?'Fermer':'Ouvrir'}</button>}
           </div>
         </div>
+        <div className="svc">
+          <img className="svc-icon" src={W('Compass')} alt="" onError={e=>e.target.style.opacity='0'}/>
+          <div className="svc-body"><h3>Visite du clan</h3><p>Visite guidée de notre base — par personne</p></div>
+          <div className="svc-right">
+            <div className="svc-price"><img src={W('Diamond')} alt="" onError={e=>e.target.style.opacity='0'}/>2</div>
+          </div>
+        </div>
       </div>
     </section>
 
