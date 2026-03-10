@@ -74,6 +74,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--t1);min-he
 .btn-toggle{padding:.3rem .7rem;border-radius:6px;font-family:'Outfit',sans-serif;font-size:.68rem;font-weight:600;cursor:pointer;border:none;transition:all .2s}
 .btn-toggle.open{background:rgba(239,68,68,.1);color:var(--red)}
 .btn-toggle.close{background:rgba(52,211,153,.1);color:var(--green)}
+.btn-book{padding:.35rem .8rem;background:linear-gradient(135deg,var(--p7),var(--p5));color:#fff;border:none;border-radius:6px;font-family:'Outfit',sans-serif;font-size:.7rem;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-book:hover{box-shadow:0 3px 12px rgba(139,92,246,.3);transform:translateY(-1px)}
 
 /* ---- TABS ---- */
 .tabs{display:flex;gap:.35rem;margin-bottom:1.5rem}

@@ -12,6 +12,18 @@ export async function POST(request) {
     );
   }
 
+  // Service booking (not a DB offer)
+  if (body.offer_id === 'service') {
+    await sendDiscordNotification({
+      type: 'emploi',
+      offerTitle: body.message || 'Service',
+      minecraftPseudo: body.minecraft_pseudo,
+      discordPseudo: body.discord_pseudo,
+      message: body.message,
+    });
+    return NextResponse.json({ success: true }, { status: 201 });
+  }
+
   const admin = getAdminClient();
 
   // Recuperer l'offre pour le webhook Discord

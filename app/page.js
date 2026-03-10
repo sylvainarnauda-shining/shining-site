@@ -80,6 +80,7 @@ export default function Home(){
   const[rModal,setRModal]=useState(null);const[aModal,setAModal]=useState(false);const[edit,setEdit]=useState(null);
   const[pw,setPw]=useState('');const[isA,setIsA]=useState(false);const[aErr,setAErr]=useState('');const[showA,setShowA]=useState(false);
   const[farmOpen,setFarmOpen]=useState(false);
+  const[svcModal,setSvcModal]=useState(null); // {name, price, icon} or null
 
   const load=useCallback(async()=>{try{const r=await fetch('/api/offers');const d=await r.json();if(Array.isArray(d))setOffers(d)}catch(e){console.error(e)}finally{setLoading(false)}},[]);
   useEffect(()=>{load()},[load]);
@@ -124,6 +125,7 @@ export default function Home(){
             <div className="svc-price"><img src={W('Diamond')} alt="" onError={e=>e.target.style.opacity='0'}/>15</div>
             <span className={`status ${farmOpen?'status-open':'status-closed'}`}>{farmOpen?'Ouvert':'Fermé'}</span>
             {isA&&<button className={`btn-toggle ${farmOpen?'open':'close'}`} onClick={()=>setFarmOpen(!farmOpen)}>{farmOpen?'Fermer':'Ouvrir'}</button>}
+            {farmOpen&&<button className="btn-book" onClick={()=>setSvcModal({name:'Ferme XP Silverfish',price:'15 diamants',icon:ITEMS.find(i=>i.id==='experience_bottle')?.icon})}>Réserver</button>}
           </div>
         </div>
         <div className="svc">
@@ -131,6 +133,7 @@ export default function Home(){
           <div className="svc-body"><h3>Visite du clan</h3><p>Visite guidée de notre base — par personne</p></div>
           <div className="svc-right">
             <div className="svc-price"><img src={W('Diamond')} alt="" onError={e=>e.target.style.opacity='0'}/>2</div>
+            <button className="btn-book" onClick={()=>setSvcModal({name:'Visite du clan',price:'2 diamants',icon:W('Map')})}>Réserver</button>
           </div>
         </div>
       </div>
@@ -180,6 +183,7 @@ export default function Home(){
 
     {rModal&&<RModal o={rModal} close={()=>setRModal(null)}/>}
     {aModal&&<OForm o={edit} close={()=>{setAModal(false);setEdit(null)}} save={save}/>}
+    {svcModal&&<SvcModal svc={svcModal} close={()=>setSvcModal(null)}/>}
   </>);
 }
 
@@ -217,5 +221,31 @@ function OForm({o,close,save}){
     <ItemPicker value={pi} onChange={setPi} label="Item en paiement"/>
     <div className="fld"><label>Quantité demandée</label><input type="number" min="1" value={pq} onChange={e=>setPq(e.target.value.replace(/\D/g,''))} placeholder="32"/></div>
     <button className="btn-send" onClick={go} disabled={!itemId||saving}>{saving?'Sauvegarde…':o?'Mettre à jour':'Publier'}</button>
+  </div></div>);
+}
+
+// ==========================================
+// SERVICE BOOKING MODAL
+// ==========================================
+function SvcModal({svc,close}){
+  const[p,setP]=useState('');const[d,setD]=useState('');const[sending,setSending]=useState(false);const[sent,setSent]=useState(false);const[dp,setDp]=useState('');
+  useEffect(()=>{const t=setTimeout(()=>setDp(p.trim()),500);return()=>clearTimeout(t)},[p]);
+  const go=async()=>{if(!p.trim())return;setSending(true);
+    try{await fetch('/api/respond',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({offer_id:'service',minecraft_pseudo:p.trim(),discord_pseudo:d.trim()||null,message:`🎫 Réservation: ${svc.name} (${svc.price})`})});
+      setSent(true)}catch{alert('Erreur')}finally{setSending(false)}};
+  return(<div className="overlay" onClick={close}><div className="modal" onClick={e=>e.stopPropagation()}>
+    <button className="modal-x" onClick={close}>×</button>
+    {sent?<div className="ok-msg"><span>✅</span><p>Réservation envoyée !</p><small>On te contactera sur Discord pour organiser ça.</small></div>:<>
+      <h2>Réserver</h2>
+      <p style={{display:'flex',alignItems:'center',gap:'.35rem'}}>
+        {svc.icon&&<img src={svc.icon} alt="" style={{width:20,height:20,imageRendering:'pixelated'}} onError={e=>e.target.style.opacity='0'}/>}
+        {svc.name} — {svc.price}
+      </p>
+      <div className="fld"><label>Pseudo Minecraft *</label><input value={p} onChange={e=>setP(e.target.value)} placeholder="Ton pseudo in-game"/>
+        {dp&&<div className="skin-preview"><img src={MH(dp)} alt=""/><span>{dp}</span></div>}</div>
+      <div className="fld"><label>Pseudo Discord</label><input value={d} onChange={e=>setD(e.target.value)} placeholder="Pour qu'on te contacte"/></div>
+      <button className="btn-send" onClick={go} disabled={!p.trim()||sending}>{sending?'Envoi…':'Réserver'}</button>
+    </>}
   </div></div>);
 }
