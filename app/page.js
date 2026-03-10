@@ -80,11 +80,21 @@ export default function Home(){
   const[rModal,setRModal]=useState(null);const[aModal,setAModal]=useState(false);const[edit,setEdit]=useState(null);
   const[pw,setPw]=useState('');const[isA,setIsA]=useState(false);const[aErr,setAErr]=useState('');const[showA,setShowA]=useState(false);
   const[farmOpen,setFarmOpen]=useState(false);
-  const[svcModal,setSvcModal]=useState(null); // {name, price, icon} or null
+  const[svcModal,setSvcModal]=useState(null);
 
-  const load=useCallback(async()=>{try{const r=await fetch('/api/offers');const d=await r.json();if(Array.isArray(d))setOffers(d)}catch(e){console.error(e)}finally{setLoading(false)}},[]);
+  const load=useCallback(async()=>{
+    try{const r=await fetch('/api/offers');const d=await r.json();if(Array.isArray(d))setOffers(d)}catch(e){console.error(e)}finally{setLoading(false)}
+    // Load farm status from DB
+    try{const r2=await fetch('/api/settings?key=farm_xp_open');const d2=await r2.json();setFarmOpen(d2.value==='true')}catch(e){console.error(e)}
+  },[]);
   useEffect(()=>{load()},[load]);
   const fil=tab==='all'?offers:offers.filter(o=>o.type===tab);
+
+  const toggleFarm=async()=>{
+    const newVal=!farmOpen;
+    setFarmOpen(newVal);
+    try{await fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${pw}`},body:JSON.stringify({key:'farm_xp_open',value:String(newVal)})})}catch(e){console.error(e);setFarmOpen(!newVal)}
+  };
 
   const login=async()=>{setAErr('');try{const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});if(r.ok){setIsA(true);load()}else setAErr('Mot de passe incorrect')}catch{setAErr('Erreur')}};
   const save=async(d)=>{const m=edit?'PUT':'POST';const b=edit?{...d,id:edit.id}:d;try{const r=await fetch('/api/offers',{method:m,headers:{'Content-Type':'application/json',Authorization:`Bearer ${pw}`},body:JSON.stringify(b)});if(r.ok){setAModal(false);setEdit(null);load()}}catch(e){console.error(e)}};
@@ -124,7 +134,7 @@ export default function Home(){
           <div className="svc-right">
             <div className="svc-price"><img src={W('Diamond')} alt="" onError={e=>e.target.style.opacity='0'}/>15</div>
             <span className={`status ${farmOpen?'status-open':'status-closed'}`}>{farmOpen?'Ouvert':'Fermé'}</span>
-            {isA&&<button className={`btn-toggle ${farmOpen?'open':'close'}`} onClick={()=>setFarmOpen(!farmOpen)}>{farmOpen?'Fermer':'Ouvrir'}</button>}
+            {isA&&<button className={`btn-toggle ${farmOpen?'open':'close'}`} onClick={toggleFarm}>{farmOpen?'Fermer':'Ouvrir'}</button>}
             {farmOpen&&<button className="btn-book" onClick={()=>setSvcModal({name:'Ferme XP Silverfish',price:'15 diamants',icon:ITEMS.find(i=>i.id==='experience_bottle')?.icon})}>Réserver</button>}
           </div>
         </div>
