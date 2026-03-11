@@ -88,6 +88,7 @@ export async function GET() {
         priceLabel: bestPrices.length >= 2 ? 'moy.' : 'dernier prix',
       };
     })
+    .filter(item => item.total >= 2)
     .sort((a, b) => b.total - a.total)
     .slice(0, 10);
 
