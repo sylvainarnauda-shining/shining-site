@@ -17,7 +17,7 @@ const nextConfig = {
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: https://minecraft.wiki https://*.supabase.co",
+              "img-src 'self' data: https://minecraft.wiki https://*.supabase.co https://mc-heads.net https://crafatar.com",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
               "frame-ancestors 'none'",
             ].join('; '),
