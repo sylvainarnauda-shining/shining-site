@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 const MH = (p) => `https://mc-heads.net/avatar/${p}/32`;
 const DIAMOND_ICON = 'https://minecraft.wiki/images/Invicon_Diamond.png';
-const XP_ICON = 'https://minecraft.wiki/images/Invicon_Experience_Bottle.png';
+const XP_ICON = 'https://minecraft.wiki/images/Bottle_o%27_Enchanting_JE2_BE2.png';
 const MAP_ICON = 'https://minecraft.wiki/images/Invicon_Map.png';
 const OBSIDIAN_ICON = 'https://minecraft.wiki/images/Invicon_Obsidian.png';
 
@@ -132,9 +132,9 @@ export default function Home(){
 
     {/* HERO */}
     <section className="hero">
-      <div className="hero-badge"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.display='none'}/>Clan Minecraft — Arkunir</div>
+      <div className="hero-badge"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.display='none'}/>Team Minecraft — Arkunir</div>
       <h1 className="hero-title">SHINING</h1>
-      <p className="hero-sub">La marketplace du clan. Achat, vente, mission et services entre joueurs.</p>
+      <p className="hero-sub">Marketplace de la Shining. Achat, vente, mission et services entre joueurs.</p>
       <div className="hero-cta">
         <a href="#market" className="btn-main">Explorer la marketplace</a>
         <a href="#services" className="btn-ghost">Nos services</a>
@@ -158,10 +158,10 @@ export default function Home(){
         </div>
         <div className="svc">
           <img className="svc-icon" src={MAP_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>
-          <div className="svc-body"><h3>Visite du clan</h3><p>Visite guidée — par personne</p></div>
+          <div className="svc-body"><h3>Visite de la team</h3><p>Visite guidée — par personne</p></div>
           <div className="svc-right">
             <div className="svc-price"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>{visitPrice}</div>
-            <button className="btn-book" onClick={()=>setSvcModal({name:'Visite du clan',price:visitPrice+' diamants',icon:MAP_ICON})}>Réserver</button>
+            <button className="btn-book" onClick={()=>setSvcModal({name:'Visite de la team',price:visitPrice+' diamants',icon:MAP_ICON})}>Réserver</button>
           </div>
         </div>
       </div>
