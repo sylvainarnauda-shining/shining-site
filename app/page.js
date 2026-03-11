@@ -153,10 +153,11 @@ export default function Home(){
     <section className="hero">
       <div className="hero-badge"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.display='none'}/>Serveur Arkunir</div>
       <h1 className="hero-title">SHINING</h1>
-      <p className="hero-sub">La marketplace du serveur Arkunir, propulsée par la Shining. Échangez, vendez, achetez entre joueurs.</p>
+      <p className="hero-sub">La première marketplace du serveur Arkunir, propulsée par la Shining. Échangez, vendez, achetez entre joueurs.</p>
       <div className="hero-cta">
         <a href="#market" className="btn-main">Voir les offres</a>
         <a href="#trends" className="btn-ghost">Tendances</a>
+        <a href="#services" className="btn-ghost">Services Shining</a>
       </div>
     </section>
 
