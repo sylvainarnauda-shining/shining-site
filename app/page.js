@@ -155,39 +155,50 @@ export default function Home(){
       <h1 className="hero-title">SHINING</h1>
       <p className="hero-sub">La marketplace du serveur Arkunir, propulsée par la Shining. Échangez, vendez, achetez entre joueurs.</p>
       <div className="hero-cta">
-        <a href="#market" className="btn-main">Explorer la marketplace</a>
-        <a href="#services" className="btn-ghost">Nos services</a>
+        <a href="#market" className="btn-main">Voir les offres</a>
+        <a href="#trends" className="btn-ghost">Tendances</a>
       </div>
     </section>
 
-    {/* SERVICES */}
-    <section className="section" id="services">
-      <div className="section-label">Services</div>
-      <h2 className="section-heading">Locations & services</h2>
-      <div className="services-row">
-        <div className="svc">
-          <img className="svc-icon" src={XP_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>
-          <div className="svc-body"><h3>Ferme XP Silverfish</h3><p>Location — 1 utilisation</p></div>
-          <div className="svc-right">
-            <div className="svc-price"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>{farmPrice}</div>
-            <span className={`status ${farmOpen?'status-open':'status-closed'}`}>{farmOpen?'Ouvert':'Fermé'}</span>
-            {isA&&<button className={`btn-toggle ${farmOpen?'open':'close'}`} onClick={toggleFarm}>{farmOpen?'Fermer':'Ouvrir'}</button>}
-            {farmOpen&&<button className="btn-book" onClick={()=>setSvcModal({name:'Ferme XP Silverfish',price:farmPrice+' diamants',icon:XP_ICON})}>Réserver</button>}
-          </div>
+    {/* MARKETPLACE — en premier, c'est le coeur du site */}
+    <section className="section" id="market">
+      <div className="section-label">Marketplace</div>
+      <h2 className="section-heading">Offres actives</h2>
+      <div className="tabs-row">
+        <div className="tabs">
+          {[{k:'all',l:'Tout'},{k:'achat',l:'Achats'},{k:'vente',l:'Ventes'},{k:'mission',l:'Missions'},...(myPseudo?[{k:'mine',l:'Mes offres'}]:[])].map(t=>
+            <button key={t.k} className={`tab ${tab===t.k?'active':''}`} onClick={()=>setTab(t.k)}>{t.l}</button>)}
         </div>
-        <div className="svc">
-          <img className="svc-icon" src={MAP_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>
-          <div className="svc-body"><h3>Visite de la team</h3><p>Visite guidée — par personne</p>
-            <p style={{fontSize:'.68rem',color:'var(--p4)',marginTop:'.2rem'}}>📍 Portail Nether : X 338 · Y 60 · Z -21</p>
-          </div>
-          <div className="svc-right">
-            <div className="svc-price"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>{visitPrice}</div>
-            <span className={`status ${visitOpen?'status-open':'status-closed'}`}>{visitOpen?'Ouvert':'Fermé'}</span>
-            {isA&&<button className={`btn-toggle ${visitOpen?'open':'close'}`} onClick={toggleVisit}>{visitOpen?'Fermer':'Ouvrir'}</button>}
-            {visitOpen&&<button className="btn-book" onClick={()=>setSvcModal({name:'Visite de la team',price:visitPrice+' diamants',icon:MAP_ICON})}>Réserver</button>}
-          </div>
-        </div>
+        <button className="btn-new-offer" onClick={()=>setNewOfferModal(true)}>+ Créer une offre</button>
       </div>
+      {loading?<div className="spin-w"><div className="spin"/></div>:
+      <div className="grid">
+        {filtered.length===0?<div className="empty"><span>📭</span>Aucune offre active.</div>:
+        filtered.map(o=>{
+          const it=gi(o.title);let pi=null,pq='';try{const p=JSON.parse(o.price);pi=gi(p.item);pq=p.qty}catch{}
+          let descText='',enchList=[];try{const d=JSON.parse(o.description);descText=d.text||'';enchList=d.enchants||[]}catch{descText=o.description||''}
+          const isSh=isShining(o.author_pseudo);
+          return(<div key={o.id} className={`card ${isSh?'shining':''}`} onClick={()=>setDetailModal(o)}>
+            <div className="card-header">
+              <div className={`badge badge-${o.type}`}>{o.type==='achat'?'Achat':o.type==='vente'?'Vente':'Mission'}</div>
+              {o.author_pseudo&&<div className="card-author">
+                <img src={MH(o.author_pseudo)} alt="" onError={e=>e.target.style.opacity='0'}/>
+                <span>{o.author_pseudo}</span>
+                {isSh&&<span className="shining-tag">SHINING</span>}
+              </div>}
+            </div>
+            <div className="offer-row">
+              {it&&<img src={it.icon} alt="" onError={e=>e.target.style.opacity='0'}/>}
+              <div><h3>{it?it.name:o.title}</h3>{o.quantity&&<span className="offer-qty">×{o.quantity}</span>}</div>
+            </div>
+            {enchList.length>0&&<div className="ench-display">{enchList.map(e=><span key={e.id} className="ench-pill">✨ {e.name} {toRoman(e.level)}</span>)}</div>}
+            {descText&&<p>{descText}</p>}
+            {pi&&<div className="price-bar"><span className="price-label">{o.type==='achat'?'Budget':'Prix'}</span>
+              <div className="price-val"><img src={pi.icon} alt="" onError={e=>e.target.style.opacity='0'}/><span>{pq}× {pi.name}</span></div></div>}
+            {o.response_count>0&&<p style={{fontSize:'.72rem',color:'var(--p4)',marginTop:'.3rem'}}>📩 {o.response_count} candidature{o.response_count>1?'s':''}</p>}
+          </div>)
+        })}
+      </div>}
     </section>
 
     {/* TENDANCES */}
@@ -234,45 +245,34 @@ export default function Home(){
       </>}
     </section>}
 
-    {/* MARKETPLACE */}
-    <section className="section" id="market">
-      <div className="section-label">Marketplace</div>
-      <h2 className="section-heading">Offres actives</h2>
-      <div className="tabs-row">
-        <div className="tabs">
-          {[{k:'all',l:'Tout'},{k:'achat',l:'Achats'},{k:'vente',l:'Ventes'},{k:'mission',l:'Missions'},...(myPseudo?[{k:'mine',l:'Mes offres'}]:[])].map(t=>
-            <button key={t.k} className={`tab ${tab===t.k?'active':''}`} onClick={()=>setTab(t.k)}>{t.l}</button>)}
+    {/* SERVICES */}
+    <section className="section" id="services">
+      <div className="section-label">Services Shining</div>
+      <h2 className="section-heading">Locations & services</h2>
+      <div className="services-row">
+        <div className="svc">
+          <img className="svc-icon" src={XP_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>
+          <div className="svc-body"><h3>Ferme XP Silverfish</h3><p>Location — 1 utilisation</p></div>
+          <div className="svc-right">
+            <div className="svc-price"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>{farmPrice}</div>
+            <span className={`status ${farmOpen?'status-open':'status-closed'}`}>{farmOpen?'Ouvert':'Fermé'}</span>
+            {isA&&<button className={`btn-toggle ${farmOpen?'open':'close'}`} onClick={toggleFarm}>{farmOpen?'Fermer':'Ouvrir'}</button>}
+            {farmOpen&&<button className="btn-book" onClick={()=>setSvcModal({name:'Ferme XP Silverfish',price:farmPrice+' diamants',icon:XP_ICON})}>Réserver</button>}
+          </div>
         </div>
-        <button className="btn-new-offer" onClick={()=>setNewOfferModal(true)}>+ Créer une offre</button>
+        <div className="svc">
+          <img className="svc-icon" src={MAP_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>
+          <div className="svc-body"><h3>Visite de la team</h3><p>Visite guidée — par personne</p>
+            <p style={{fontSize:'.68rem',color:'var(--p4)',marginTop:'.2rem'}}>📍 Portail Nether : X 338 · Y 60 · Z -21</p>
+          </div>
+          <div className="svc-right">
+            <div className="svc-price"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>{visitPrice}</div>
+            <span className={`status ${visitOpen?'status-open':'status-closed'}`}>{visitOpen?'Ouvert':'Fermé'}</span>
+            {isA&&<button className={`btn-toggle ${visitOpen?'open':'close'}`} onClick={toggleVisit}>{visitOpen?'Fermer':'Ouvrir'}</button>}
+            {visitOpen&&<button className="btn-book" onClick={()=>setSvcModal({name:'Visite de la team',price:visitPrice+' diamants',icon:MAP_ICON})}>Réserver</button>}
+          </div>
+        </div>
       </div>
-      {loading?<div className="spin-w"><div className="spin"/></div>:
-      <div className="grid">
-        {filtered.length===0?<div className="empty"><span>📭</span>Aucune offre active.</div>:
-        filtered.map(o=>{
-          const it=gi(o.title);let pi=null,pq='';try{const p=JSON.parse(o.price);pi=gi(p.item);pq=p.qty}catch{}
-          let descText='',enchList=[];try{const d=JSON.parse(o.description);descText=d.text||'';enchList=d.enchants||[]}catch{descText=o.description||''}
-          const isSh=isShining(o.author_pseudo);
-          return(<div key={o.id} className={`card ${isSh?'shining':''}`} onClick={()=>setDetailModal(o)}>
-            <div className="card-header">
-              <div className={`badge badge-${o.type}`}>{o.type==='achat'?'Achat':o.type==='vente'?'Vente':'Mission'}</div>
-              {o.author_pseudo&&<div className="card-author">
-                <img src={MH(o.author_pseudo)} alt="" onError={e=>e.target.style.opacity='0'}/>
-                <span>{o.author_pseudo}</span>
-                {isSh&&<span className="shining-tag">SHINING</span>}
-              </div>}
-            </div>
-            <div className="offer-row">
-              {it&&<img src={it.icon} alt="" onError={e=>e.target.style.opacity='0'}/>}
-              <div><h3>{it?it.name:o.title}</h3>{o.quantity&&<span className="offer-qty">×{o.quantity}</span>}</div>
-            </div>
-            {enchList.length>0&&<div className="ench-display">{enchList.map(e=><span key={e.id} className="ench-pill">✨ {e.name} {toRoman(e.level)}</span>)}</div>}
-            {descText&&<p>{descText}</p>}
-            {pi&&<div className="price-bar"><span className="price-label">{o.type==='achat'?'Budget':'Prix'}</span>
-              <div className="price-val"><img src={pi.icon} alt="" onError={e=>e.target.style.opacity='0'}/><span>{pq}× {pi.name}</span></div></div>}
-            {o.response_count>0&&<p style={{fontSize:'.72rem',color:'var(--p4)',marginTop:'.3rem'}}>📩 {o.response_count} candidature{o.response_count>1?'s':''}</p>}
-          </div>)
-        })}
-      </div>}
     </section>
 
     {/* ADMIN PANEL */}

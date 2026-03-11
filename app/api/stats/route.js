@@ -75,8 +75,10 @@ export async function GET() {
     .sort((a, b) => b.total - a.total)
     .slice(0, 10);
 
-  // Top traders
+  // Top traders (filter offensive pseudos)
+  const BLOCKED = /fuck|shit|ass|bitch|nazi|nigg/i;
   const topTraders = Object.entries(traderCounts)
+    .filter(([pseudo]) => pseudo !== 'Anonyme' && !BLOCKED.test(pseudo))
     .map(([pseudo, d]) => ({
       pseudo,
       total: d.sells + d.buys + d.responses,
