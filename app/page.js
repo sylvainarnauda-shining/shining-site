@@ -201,7 +201,7 @@ export default function Home(){
         </>:
           <button className="nav-btn" onClick={()=>setShowUserLogin(true)}>👤 Se connecter</button>
         }
-        <span className="nav-pill">Arkunir</span>
+        <a href="https://x.com/Arkunir" target="_blank" rel="noopener" className="nav-pill" style={{textDecoration:'none',cursor:'pointer'}}>Arkunir ↗</a>
         {isA?<>
           <button className={`nav-btn ${showAdmin?'active':''}`} onClick={()=>setShowAdmin(!showAdmin)}>⚙ Admin</button>
           <button className="nav-btn" onClick={()=>{setIsA(false);setPw('');setShowAdmin(false)}}>Déco admin</button>
