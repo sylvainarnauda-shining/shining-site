@@ -2,222 +2,131 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 const MH = (p) => `https://mc-heads.net/avatar/${p}/32`;
-
-// Items loaded dynamically from API
-let _itemsCache = [];
-let _itemsLoading = false;
-let _itemsListeners = [];
-
-function loadItems() {
-  if (_itemsCache.length > 0 || _itemsLoading) return;
-  _itemsLoading = true;
-  fetch('/api/mcitems').then(r => r.json()).then(data => {
-    if (Array.isArray(data)) {
-      _itemsCache = data;
-      _itemsListeners.forEach(fn => fn(data));
-    }
-    _itemsLoading = false;
-  }).catch(() => { _itemsLoading = false; });
-}
-
-function useItems() {
-  const [items, setItems] = useState(_itemsCache);
-  useEffect(() => {
-    if (_itemsCache.length > 0) { setItems(_itemsCache); return; }
-    _itemsListeners.push(setItems);
-    loadItems();
-    return () => { _itemsListeners = _itemsListeners.filter(fn => fn !== setItems); };
-  }, []);
-  return items;
-}
-
-const gi = (id) => _itemsCache.find(i => i.id === id);
-
-const XP_ICON = 'https://minecraft.wiki/images/Invicon_Experience_Bottle.png';
 const DIAMOND_ICON = 'https://minecraft.wiki/images/Invicon_Diamond.png';
+const XP_ICON = 'https://minecraft.wiki/images/Invicon_Experience_Bottle.png';
 const MAP_ICON = 'https://minecraft.wiki/images/Invicon_Map.png';
 const OBSIDIAN_ICON = 'https://minecraft.wiki/images/Invicon_Obsidian.png';
 
-// Enchantments
-let _enchCache = [];
-let _enchLoading = false;
-let _enchListeners = [];
+// ---- Dynamic items & enchants ----
+let _items=[], _itemsLoading=false, _itemsL=[];
+function loadItems(){if(_items.length||_itemsLoading)return;_itemsLoading=true;fetch('/api/mcitems').then(r=>r.json()).then(d=>{if(Array.isArray(d)){_items=d;_itemsL.forEach(fn=>fn(d))}}).finally(()=>{_itemsLoading=false})}
+function useItems(){const[i,si]=useState(_items);useEffect(()=>{if(_items.length){si(_items);return}_itemsL.push(si);loadItems();return()=>{_itemsL=_itemsL.filter(f=>f!==si)}},[]);return i}
 
-function loadEnchants() {
-  if (_enchCache.length > 0 || _enchLoading) return;
-  _enchLoading = true;
-  fetch('/api/enchants').then(r => r.json()).then(data => {
-    if (Array.isArray(data)) { _enchCache = data; _enchListeners.forEach(fn => fn(data)); }
-    _enchLoading = false;
-  }).catch(() => { _enchLoading = false; });
-}
+let _ench=[], _enchLoading=false, _enchL=[];
+function loadEnch(){if(_ench.length||_enchLoading)return;_enchLoading=true;fetch('/api/enchants').then(r=>r.json()).then(d=>{if(Array.isArray(d)){_ench=d;_enchL.forEach(fn=>fn(d))}}).finally(()=>{_enchLoading=false})}
+function useEnchants(){const[e,se]=useState(_ench);useEffect(()=>{if(_ench.length){se(_ench);return}_enchL.push(se);loadEnch();return()=>{_enchL=_enchL.filter(f=>f!==se)}},[]);return e}
 
-function useEnchants() {
-  const [e, setE] = useState(_enchCache);
-  useEffect(() => {
-    if (_enchCache.length > 0) { setE(_enchCache); return; }
-    _enchListeners.push(setE);
-    loadEnchants();
-    return () => { _enchListeners = _enchListeners.filter(fn => fn !== setE); };
-  }, []);
-  return e;
-}
+const gi=(id)=>_items.find(i=>i.id===id);
+const ENCHANTABLE=/sword|pickaxe|axe|shovel|hoe|bow|crossbow|trident|helmet|chestplate|leggings|boots|elytra|shield|fishing_rod|shears|mace|enchanted_book|book/;
+function toRoman(n){return['','I','II','III','IV','V','VI','VII','VIII','IX','X'][n]||n}
 
-// Items that can be enchanted
-const ENCHANTABLE = /sword|pickaxe|axe|shovel|hoe|bow|crossbow|trident|helmet|chestplate|leggings|boots|elytra|shield|fishing_rod|shears|mace|enchanted_book|book/;
-
-function toRoman(n) { return ['','I','II','III','IV','V','VI','VII','VIII','IX','X'][n] || n; }
-
-function EnchantPicker({ enchants, onChange }) {
-  const allEnch = useEnchants();
-  const [showAdd, setShowAdd] = useState(false);
-  const [search, setSearch] = useState('');
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const h = e => { if (ref.current && !ref.current.contains(e.target)) setShowAdd(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
-
-  const filtered = allEnch.filter(e =>
-    !enchants.find(x => x.id === e.id) &&
-    (e.name.toLowerCase().includes(search.toLowerCase()) || e.category.toLowerCase().includes(search.toLowerCase()))
-  );
-
-  const addEnch = (ench) => {
-    onChange([...enchants, { id: ench.id, name: ench.name, level: ench.maxLevel, maxLevel: ench.maxLevel }]);
-    setShowAdd(false);
-    setSearch('');
-  };
-
-  const removeEnch = (id) => onChange(enchants.filter(e => e.id !== id));
-
-  const setLevel = (id, level) => onChange(enchants.map(e => e.id === id ? { ...e, level } : e));
-
-  return (
-    <div className="fld" ref={ref}>
-      <label>Enchantements (optionnel)</label>
-      {enchants.length > 0 && (
-        <div className="ench-list">
-          {enchants.map(e => (
-            <div key={e.id} className="ench-tag">
-              <span className="ench-name">{e.name}</span>
-              <select className="ench-lvl" value={e.level} onChange={ev => setLevel(e.id, parseInt(ev.target.value))}>
-                {Array.from({ length: e.maxLevel }, (_, i) => (
-                  <option key={i + 1} value={i + 1}>{toRoman(i + 1)}</option>
-                ))}
-              </select>
-              <button className="ench-rm" onClick={() => removeEnch(e.id)} type="button">×</button>
-            </div>
-          ))}
-        </div>
-      )}
-      <button className="ench-add-btn" onClick={() => setShowAdd(!showAdd)} type="button">
-        + Ajouter un enchantement
-      </button>
-      {showAdd && (
-        <div className="ench-dropdown">
-          <input className="item-search" placeholder="Rechercher enchantement..." value={search}
-            onChange={e => setSearch(e.target.value)} autoFocus />
-          <div className="item-list">
-            {filtered.map(e => (
-              <div key={e.id} className="item-opt" onClick={() => addEnch(e)}>
-                <span>✨ {e.name} (max {toRoman(e.maxLevel)})</span>
-                <span className="ench-cat-tag">{e.category}</span>
-              </div>
-            ))}
-            {filtered.length === 0 && <div className="item-nil">Aucun enchantement</div>}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function formatEnchants(enchants) {
-  if (!enchants || enchants.length === 0) return '';
-  return enchants.map(e => `${e.name} ${toRoman(e.level)}`).join(', ');
-}
-
-
+// ---- ItemPicker ----
 function ItemPicker({value,onChange,label}){
   const items=useItems();
-  const[open,setOpen]=useState(false);const[s,setS]=useState('');const ref=useRef(null);const sel=value?items.find(i=>i.id===value):null;
+  const[open,setOpen]=useState(false);const[s,setS]=useState('');const ref=useRef(null);
+  const sel=value?items.find(i=>i.id===value):null;
   useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false)};document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h)},[]);
   const f=items.filter(i=>i.name.toLowerCase().includes(s.toLowerCase())||i.cat.toLowerCase().includes(s.toLowerCase()));
-  const g={};f.forEach(i=>{if(!g[i.cat])g[i.cat]=[];g[i.cat].push(i)});
+  const g={};f.slice(0,100).forEach(i=>{if(!g[i.cat])g[i.cat]=[];g[i.cat].push(i)});
   return(<div className="fld" ref={ref}>{label&&<label>{label}</label>}
     <div className="item-picker" onClick={()=>setOpen(!open)}>
       {sel?<div className="item-sel"><img src={sel.icon} alt="" onError={e=>e.target.style.opacity='0'}/><span>{sel.name}</span></div>:<span className="item-ph">Choisir un item...</span>}
       <span className="item-arr">{open?'▴':'▾'}</span>
     </div>
-    {open&&<div className="item-dd"><input className="item-search" placeholder="Rechercher..." value={s} onChange={e=>setS(e.target.value)} onClick={e=>e.stopPropagation()} autoFocus/>
+    {open&&<div className="item-dd"><input className="item-search" placeholder="Rechercher un item..." value={s} onChange={e=>setS(e.target.value)} onClick={e=>e.stopPropagation()} autoFocus/>
       <div className="item-list">{Object.entries(g).map(([c,its])=><div key={c}><div className="item-cat">{c}</div>
         {its.map(it=><div key={it.id} className={`item-opt ${value===it.id?'sel':''}`} onClick={e=>{e.stopPropagation();onChange(it.id);setOpen(false);setS('')}}>
           <img src={it.icon} alt="" onError={e=>e.target.style.opacity='0'}/><span>{it.name}</span></div>)}
-      </div>)}{f.length===0&&<div className="item-nil">Aucun item</div>}</div></div>}
+      </div>)}{f.length===0&&<div className="item-nil">Aucun item trouvé</div>}{f.length>100&&<div className="item-nil">Tape pour affiner ({f.length} résultats)</div>}</div></div>}
   </div>);
 }
 
+// ---- EnchantPicker ----
+function EnchantPicker({enchants,onChange}){
+  const allE=useEnchants();const[show,setShow]=useState(false);const[s,setS]=useState('');const ref=useRef(null);
+  useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setShow(false)};document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h)},[]);
+  const fil=allE.filter(e=>!enchants.find(x=>x.id===e.id)&&(e.name.toLowerCase().includes(s.toLowerCase())||e.category.toLowerCase().includes(s.toLowerCase())));
+  return(<div className="fld" ref={ref}><label>Enchantements (optionnel)</label>
+    {enchants.length>0&&<div className="ench-list">{enchants.map(e=><div key={e.id} className="ench-tag">
+      <span className="ench-name">{e.name}</span>
+      <select className="ench-lvl" value={e.level} onChange={ev=>onChange(enchants.map(x=>x.id===e.id?{...x,level:parseInt(ev.target.value)}:x))}>
+        {Array.from({length:e.maxLevel},(_,i)=><option key={i+1} value={i+1}>{toRoman(i+1)}</option>)}
+      </select>
+      <button className="ench-rm" onClick={()=>onChange(enchants.filter(x=>x.id!==e.id))} type="button">×</button>
+    </div>)}</div>}
+    <button className="ench-add-btn" onClick={()=>setShow(!show)} type="button">+ Ajouter un enchantement</button>
+    {show&&<div className="ench-dropdown"><input className="item-search" placeholder="Rechercher..." value={s} onChange={e=>setS(e.target.value)} autoFocus/>
+      <div className="item-list">{fil.map(e=><div key={e.id} className="item-opt" onClick={()=>{onChange([...enchants,{id:e.id,name:e.name,level:e.maxLevel,maxLevel:e.maxLevel}]);setShow(false);setS('')}}>
+        <span>✨ {e.name} (max {toRoman(e.maxLevel)})</span><span className="ench-cat-tag">{e.category}</span>
+      </div>)}{fil.length===0&&<div className="item-nil">Aucun enchantement</div>}</div></div>}
+  </div>);
+}
+
+// ==========================================
+// MAIN PAGE
+// ==========================================
 export default function Home(){
   const[offers,setOffers]=useState([]);const[loading,setLoading]=useState(true);const[tab,setTab]=useState('all');
-  const[rModal,setRModal]=useState(null);const[aModal,setAModal]=useState(false);const[edit,setEdit]=useState(null);
-  const[pw,setPw]=useState('');const[isA,setIsA]=useState(false);const[aErr,setAErr]=useState('');const[showA,setShowA]=useState(false);
-  const[farmOpen,setFarmOpen]=useState(false);
+  const[detailModal,setDetailModal]=useState(null);const[newOfferModal,setNewOfferModal]=useState(false);
   const[svcModal,setSvcModal]=useState(null);
+  const[pw,setPw]=useState('');const[isA,setIsA]=useState(false);const[aErr,setAErr]=useState('');
+  const[showAdmin,setShowAdmin]=useState(false);const[showLogin,setShowLogin]=useState(false);
+  const[settings,setSettings]=useState({farm_xp_open:'false',farm_xp_price:'15',visit_price:'2',shining_members:'[]'});
+
+  const shiningMembers=(() => {try{return JSON.parse(settings.shining_members)}catch{return[]}})();
+  const isShining=(pseudo)=>shiningMembers.map(m=>m.toLowerCase()).includes((pseudo||'').toLowerCase());
 
   const load=useCallback(async()=>{
     try{const r=await fetch('/api/offers');const d=await r.json();if(Array.isArray(d))setOffers(d)}catch(e){console.error(e)}finally{setLoading(false)}
-    try{const r2=await fetch('/api/settings?key=farm_xp_open');const d2=await r2.json();setFarmOpen(d2.value==='true')}catch(e){console.error(e)}
+    try{const r2=await fetch('/api/settings');const d2=await r2.json();if(Array.isArray(d2)){const s={};d2.forEach(x=>{s[x.key]=x.value});setSettings(prev=>({...prev,...s}))}}catch(e){console.error(e)}
   },[]);
-
   useEffect(()=>{load()},[load]);
 
-  // Realtime: listen for DB changes via Supabase Realtime
+  // Realtime
   useEffect(()=>{
     let sub;
-    (async()=>{
-      try{
-        const{supabaseClient}=await import('../lib/supabase-client');
-        if(!supabaseClient)return;
-        sub=supabaseClient.channel('site-realtime')
-          .on('postgres_changes',{event:'*',schema:'public',table:'offers'},()=>{
-            fetch('/api/offers').then(r=>r.json()).then(d=>{if(Array.isArray(d))setOffers(d)}).catch(()=>{});
-          })
-          .on('postgres_changes',{event:'*',schema:'public',table:'settings'},()=>{
-            fetch('/api/settings?key=farm_xp_open').then(r=>r.json()).then(d=>{if(d.value)setFarmOpen(d.value==='true')}).catch(()=>{});
-          })
-          .subscribe();
-      }catch(e){console.error('Realtime error:',e)}
-    })();
-    // Fallback: poll every 10s in case realtime disconnects
-    const interval=setInterval(()=>{
-      fetch('/api/offers').then(r=>r.json()).then(d=>{if(Array.isArray(d))setOffers(d)}).catch(()=>{});
-      fetch('/api/settings?key=farm_xp_open').then(r=>r.json()).then(d=>{if(d.value)setFarmOpen(d.value==='true')}).catch(()=>{});
-    },10000);
-    return()=>{if(sub)sub.unsubscribe();clearInterval(interval)};
-  },[]);
-  const fil=tab==='all'?offers:offers.filter(o=>o.type===tab);
+    (async()=>{try{const{supabaseClient}=await import('../lib/supabase-client');if(!supabaseClient)return;
+      sub=supabaseClient.channel('live').on('postgres_changes',{event:'*',schema:'public',table:'offers'},()=>load()).on('postgres_changes',{event:'*',schema:'public',table:'settings'},()=>load()).subscribe()}catch(e){console.error(e)}})();
+    const iv=setInterval(load,10000);
+    return()=>{if(sub)sub.unsubscribe();clearInterval(iv)};
+  },[load]);
 
-  const toggleFarm=async()=>{
-    const newVal=!farmOpen;
-    setFarmOpen(newVal);
-    try{await fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${pw}`},body:JSON.stringify({key:'farm_xp_open',value:String(newVal)})})}catch(e){console.error(e);setFarmOpen(!newVal)}
+  // Sort: shining first, then by date
+  const sorted=[...offers].sort((a,b)=>{
+    const aS=isShining(a.author_pseudo)?1:0;const bS=isShining(b.author_pseudo)?1:0;
+    if(aS!==bS)return bS-aS;return new Date(b.created_at)-new Date(a.created_at);
+  });
+  const filtered=tab==='all'?sorted:sorted.filter(o=>o.type===tab);
+
+  const farmOpen=settings.farm_xp_open==='true';
+  const farmPrice=settings.farm_xp_price||'15';
+  const visitPrice=settings.visit_price||'2';
+
+  const login=async()=>{setAErr('');try{const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});if(r.ok){setIsA(true);setShowLogin(false);load()}else setAErr('Mot de passe incorrect')}catch{setAErr('Erreur')}};
+  const toggleFarm=async()=>{const nv=!farmOpen;setSettings(p=>({...p,farm_xp_open:String(nv)}));await fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${pw}`},body:JSON.stringify({key:'farm_xp_open',value:String(nv)})})};
+  const saveSetting=async(key,value)=>{await fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${pw}`},body:JSON.stringify({key,value})});load()};
+  const closeOffer=async(o)=>{await fetch('/api/offers',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${pw}`},body:JSON.stringify({...o,status:'closed'})});load()};
+  const delOffer=async(id)=>{if(!confirm('Supprimer ?'))return;await fetch(`/api/offers?id=${id}`,{method:'DELETE',headers:{Authorization:`Bearer ${pw}`}});load()};
+
+  const saveOffer=async(data)=>{
+    const method=data.id?'PUT':'POST';
+    const headers={'Content-Type':'application/json'};
+    if(isA)headers.Authorization=`Bearer ${pw}`;
+    try{const r=await fetch('/api/offers',{method,headers,body:JSON.stringify(data)});if(r.ok){setNewOfferModal(false);load()}}catch(e){console.error(e)}
   };
-
-  const login=async()=>{setAErr('');try{const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});if(r.ok){setIsA(true);load()}else setAErr('Mot de passe incorrect')}catch{setAErr('Erreur')}};
-  const save=async(d)=>{const m=edit?'PUT':'POST';const b=edit?{...d,id:edit.id}:d;try{const r=await fetch('/api/offers',{method:m,headers:{'Content-Type':'application/json',Authorization:`Bearer ${pw}`},body:JSON.stringify(b)});if(r.ok){setAModal(false);setEdit(null);load()}}catch(e){console.error(e)}};
-  const close=async(o)=>{await fetch('/api/offers',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${pw}`},body:JSON.stringify({...o,status:'closed'})});load()};
-  const del=async(id)=>{if(!confirm('Supprimer ?'))return;await fetch(`/api/offers?id=${id}`,{method:'DELETE',headers:{Authorization:`Bearer ${pw}`}});load()};
 
   return(<>
     {/* NAV */}
     <nav className="nav">
       <a href="#" className="nav-brand"><div className="nav-logo">S</div><span className="nav-name">SHINING</span></a>
       <div className="nav-right">
-        <span className="nav-pill">Serveur Arkunir</span>
-        <button className="nav-admin" onClick={()=>setShowA(!showA)}>{isA?'⚙':'🔒'}</button>
+        <span className="nav-pill">Arkunir</span>
+        {isA?<>
+          <button className={`nav-btn ${showAdmin?'active':''}`} onClick={()=>setShowAdmin(!showAdmin)}>⚙ Admin</button>
+          <button className="nav-btn" onClick={()=>{setIsA(false);setPw('');setShowAdmin(false)}}>Déco</button>
+        </>:
+          <button className="nav-btn" onClick={()=>setShowLogin(true)}>🔒 Admin</button>
+        }
       </div>
     </nav>
 
@@ -225,12 +134,11 @@ export default function Home(){
     <section className="hero">
       <div className="hero-badge"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.display='none'}/>Clan Minecraft — Arkunir</div>
       <h1 className="hero-title">SHINING</h1>
-      <p className="hero-sub">La marketplace du clan. Achat, vente, emploi et services entre joueurs.</p>
+      <p className="hero-sub">La marketplace du clan. Achat, vente, mission et services entre joueurs.</p>
       <div className="hero-cta">
         <a href="#market" className="btn-main">Explorer la marketplace</a>
         <a href="#services" className="btn-ghost">Nos services</a>
       </div>
-      <div className="hero-scroll"/>
     </section>
 
     {/* SERVICES */}
@@ -242,27 +150,24 @@ export default function Home(){
           <img className="svc-icon" src={XP_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>
           <div className="svc-body"><h3>Ferme XP Silverfish</h3><p>Location — 1 utilisation</p></div>
           <div className="svc-right">
-            <div className="svc-price"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>15</div>
+            <div className="svc-price"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>{farmPrice}</div>
             <span className={`status ${farmOpen?'status-open':'status-closed'}`}>{farmOpen?'Ouvert':'Fermé'}</span>
             {isA&&<button className={`btn-toggle ${farmOpen?'open':'close'}`} onClick={toggleFarm}>{farmOpen?'Fermer':'Ouvrir'}</button>}
-            {farmOpen&&<button className="btn-book" onClick={()=>setSvcModal({name:'Ferme XP Silverfish',price:'15 diamants',icon:XP_ICON})}>Réserver</button>}
+            {farmOpen&&<button className="btn-book" onClick={()=>setSvcModal({name:'Ferme XP Silverfish',price:farmPrice+' diamants',icon:XP_ICON})}>Réserver</button>}
           </div>
         </div>
         <div className="svc">
           <img className="svc-icon" src={MAP_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>
-          <div className="svc-body"><h3>Visite du clan</h3><p>Visite guidée de notre base — par personne</p></div>
+          <div className="svc-body"><h3>Visite du clan</h3><p>Visite guidée — par personne</p></div>
           <div className="svc-right">
-            <div className="svc-price"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>2</div>
-            <button className="btn-book" onClick={()=>setSvcModal({name:'Visite du clan',price:'2 diamants',icon:MAP_ICON})}>Réserver</button>
+            <div className="svc-price"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>{visitPrice}</div>
+            <button className="btn-book" onClick={()=>setSvcModal({name:'Visite du clan',price:visitPrice+' diamants',icon:MAP_ICON})}>Réserver</button>
           </div>
         </div>
       </div>
       <div className="coords-card">
         <img src={OBSIDIAN_ICON} alt="" className="coords-icon" onError={e=>e.target.style.opacity='0'}/>
-        <div className="coords-body">
-          <h3>Portail du Nether — Entrée de la base</h3>
-          <p>Pour les échanges et visites, rendez-vous à notre portail</p>
-        </div>
+        <div className="coords-body"><h3>Portail du Nether — Entrée de la base</h3><p>Point de rendez-vous pour échanges et visites</p></div>
         <div className="coords-values">
           <span className="coord"><span className="coord-label">X</span>338</span>
           <span className="coord"><span className="coord-label">Y</span>60</span>
@@ -270,20 +175,34 @@ export default function Home(){
         </div>
       </div>
     </section>
+
+    {/* MARKETPLACE */}
     <section className="section" id="market">
       <div className="section-label">Marketplace</div>
       <h2 className="section-heading">Offres actives</h2>
-      <div className="tabs">
-        {[{k:'all',l:'Tout'},{k:'achat',l:'Achats'},{k:'vente',l:'Ventes'},{k:'emploi',l:'Emplois'}].map(t=>
-          <button key={t.k} className={`tab ${tab===t.k?'active':''}`} onClick={()=>setTab(t.k)}>{t.l}</button>)}
+      <div className="tabs-row">
+        <div className="tabs">
+          {[{k:'all',l:'Tout'},{k:'achat',l:'Achats'},{k:'vente',l:'Ventes'},{k:'mission',l:'Missions'}].map(t=>
+            <button key={t.k} className={`tab ${tab===t.k?'active':''}`} onClick={()=>setTab(t.k)}>{t.l}</button>)}
+        </div>
+        <button className="btn-new-offer" onClick={()=>setNewOfferModal(true)}>+ Créer une offre</button>
       </div>
       {loading?<div className="spin-w"><div className="spin"/></div>:
       <div className="grid">
-        {fil.length===0?<div className="empty"><span>📭</span>Aucune offre active.</div>:
-        fil.map(o=>{const it=gi(o.title);let pi=null,pq='';try{const p=JSON.parse(o.price);pi=gi(p.item);pq=p.qty}catch{}
+        {filtered.length===0?<div className="empty"><span>📭</span>Aucune offre active.</div>:
+        filtered.map(o=>{
+          const it=gi(o.title);let pi=null,pq='';try{const p=JSON.parse(o.price);pi=gi(p.item);pq=p.qty}catch{}
           let descText='',enchList=[];try{const d=JSON.parse(o.description);descText=d.text||'';enchList=d.enchants||[]}catch{descText=o.description||''}
-          return(<div key={o.id} className="card">
-            <div className={`badge badge-${o.type}`}>{o.type==='achat'?'Achat':o.type==='vente'?'Vente':'Emploi'}</div>
+          const isSh=isShining(o.author_pseudo);
+          return(<div key={o.id} className={`card ${isSh?'shining':''}`} onClick={()=>setDetailModal(o)}>
+            <div className="card-header">
+              <div className={`badge badge-${o.type}`}>{o.type==='achat'?'Achat':o.type==='vente'?'Vente':'Mission'}</div>
+              {o.author_pseudo&&<div className="card-author">
+                <img src={MH(o.author_pseudo)} alt="" onError={e=>e.target.style.opacity='0'}/>
+                <span>{o.author_pseudo}</span>
+                {isSh&&<span className="shining-tag">SHINING</span>}
+              </div>}
+            </div>
             <div className="offer-row">
               {it&&<img src={it.icon} alt="" onError={e=>e.target.style.opacity='0'}/>}
               <div><h3>{it?it.name:o.title}</h3>{o.quantity&&<span className="offer-qty">×{o.quantity}</span>}</div>
@@ -292,81 +211,199 @@ export default function Home(){
             {descText&&<p>{descText}</p>}
             {pi&&<div className="price-bar"><span className="price-label">{o.type==='achat'?'Budget':'Prix'}</span>
               <div className="price-val"><img src={pi.icon} alt="" onError={e=>e.target.style.opacity='0'}/><span>{pq}× {pi.name}</span></div></div>}
-            <button className="btn-interest" onClick={()=>setRModal(o)}>Je suis intéressé</button>
-          </div>)})}
+          </div>)
+        })}
       </div>}
     </section>
 
-    {/* ADMIN */}
-    {showA&&<section className="admin-s">
-      {!isA?<div className="admin-login"><h2>Admin</h2>
-        <div className="admin-r"><input type="password" placeholder="Mot de passe" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==='Enter'&&login()}/><button onClick={login}>OK</button></div>
-        {aErr&&<div className="admin-err">{aErr}</div>}</div>:
-      <div className="admin-panel">
-        <div className="admin-bar"><h2>Gestion</h2><div className="admin-btns"><button className="btn-a" onClick={()=>{setEdit(null);setAModal(true)}}>+ Offre</button><button className="btn-d" onClick={()=>{setIsA(false);setPw('');setShowA(false)}}>Déco</button></div></div>
-        <div className="adm-list">{offers.map(o=><div key={o.id} className="adm-item">
-          <div className="adm-info"><h4><span className={`badge badge-${o.type}`}>{o.type}</span> {gi(o.title)?.name||o.title}</h4></div>
-          <div className="adm-acts"><button className="btn-s e" onClick={()=>{setEdit(o);setAModal(true)}}>Modifier</button><button className="btn-s c" onClick={()=>close(o)}>Fermer</button><button className="btn-s x" onClick={()=>del(o.id)}>Suppr</button></div>
-        </div>)}</div>
-      </div>}
+    {/* ADMIN PANEL */}
+    {showAdmin&&isA&&<section className="admin-panel" id="admin">
+      <h2>⚙ Panel Admin</h2>
+      <div className="admin-grid">
+        <div className="admin-setting">
+          <label>Prix Ferme XP (diamants)</label>
+          <input type="number" value={settings.farm_xp_price||''} onChange={e=>setSettings(p=>({...p,farm_xp_price:e.target.value}))}/>
+          <button className="btn-save" onClick={()=>saveSetting('farm_xp_price',settings.farm_xp_price)}>Sauvegarder</button>
+        </div>
+        <div className="admin-setting">
+          <label>Prix Visite (diamants)</label>
+          <input type="number" value={settings.visit_price||''} onChange={e=>setSettings(p=>({...p,visit_price:e.target.value}))}/>
+          <button className="btn-save" onClick={()=>saveSetting('visit_price',settings.visit_price)}>Sauvegarder</button>
+        </div>
+        <div className="admin-setting">
+          <label>Membres Shining (1 pseudo par ligne)</label>
+          <textarea value={(() => {try{return JSON.parse(settings.shining_members).join('\n')}catch{return settings.shining_members}})()}
+            onChange={e=>setSettings(p=>({...p,shining_members:JSON.stringify(e.target.value.split('\n').filter(x=>x.trim()))}))}/>
+          <button className="btn-save" onClick={()=>saveSetting('shining_members',settings.shining_members)}>Sauvegarder</button>
+        </div>
+      </div>
+      <h3 style={{fontSize:'.95rem',fontWeight:700,marginBottom:'.6rem'}}>Gérer les offres</h3>
+      <div className="adm-offers">
+        {offers.map(o=><div key={o.id} className="adm-item">
+          <div className="adm-info"><h4>{gi(o.title)?.name||o.title} {o.author_pseudo&&<span style={{color:'var(--t3)',fontWeight:400}}>— {o.author_pseudo}</span>}</h4></div>
+          <div className="adm-acts">
+            <button className="btn-s c" onClick={()=>closeOffer(o)}>Fermer</button>
+            <button className="btn-s x" onClick={()=>delOffer(o.id)}>Suppr</button>
+          </div>
+        </div>)}
+        {offers.length===0&&<p style={{color:'var(--t3)',fontSize:'.85rem'}}>Aucune offre.</p>}
+      </div>
     </section>}
 
     <footer className="footer">Shining — shining-mc.fr — Serveur Arkunir</footer>
 
-    {rModal&&<RModal o={rModal} close={()=>setRModal(null)}/>}
-    {aModal&&<OForm o={edit} close={()=>{setAModal(false);setEdit(null)}} save={save}/>}
+    {/* MODALS */}
+    {showLogin&&<LoginModal close={()=>setShowLogin(false)} pw={pw} setPw={setPw} login={login} err={aErr}/>}
+    {newOfferModal&&<OfferForm close={()=>setNewOfferModal(false)} save={saveOffer} isAdmin={isA}/>}
+    {detailModal&&<DetailModal offer={detailModal} close={()=>setDetailModal(null)} isAdmin={isA} shiningMembers={shiningMembers}/>}
     {svcModal&&<SvcModal svc={svcModal} close={()=>setSvcModal(null)}/>}
   </>);
 }
 
-function RModal({o,close}){
-  const[p,setP]=useState('');const[d,setD]=useState('');const[m,setM]=useState('');const[sending,setSending]=useState(false);const[sent,setSent]=useState(false);const[dp,setDp]=useState('');
-  useEffect(()=>{const t=setTimeout(()=>setDp(p.trim()),500);return()=>clearTimeout(t)},[p]);
-  const go=async()=>{if(!p.trim())return;setSending(true);try{await fetch('/api/respond',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({offer_id:o.id,minecraft_pseudo:p.trim(),discord_pseudo:d.trim()||null,message:m.trim()||null})});setSent(true)}catch{alert('Erreur')}finally{setSending(false)}};
-  const it=gi(o.title);
+// ---- Login Modal ----
+function LoginModal({close,pw,setPw,login,err}){
+  return(<div className="overlay" onClick={close}><div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:340,textAlign:'center'}}>
+    <button className="modal-x" onClick={close}>×</button>
+    <h2>Connexion Admin</h2>
+    <p className="modal-subtitle">Entrez le mot de passe admin</p>
+    <div className="fld"><input type="password" placeholder="Mot de passe" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==='Enter'&&login()}/></div>
+    <button className="btn-send" onClick={login}>Se connecter</button>
+    {err&&<p style={{color:'var(--red)',fontSize:'.82rem',marginTop:'.5rem'}}>{err}</p>}
+  </div></div>);
+}
+
+// ---- Offer Detail Modal ----
+function DetailModal({offer,close,isAdmin,shiningMembers}){
+  const[responses,setResponses]=useState([]);const[loadingR,setLoadingR]=useState(true);
+  const[pseudo,setPseudo]=useState('');const[discord,setDiscord]=useState('');const[msg,setMsg]=useState('');
+  const[sending,setSending]=useState(false);const[sent,setSent]=useState(false);
+  const[dp,setDp]=useState('');
+
+  useEffect(()=>{const t=setTimeout(()=>setDp(pseudo.trim()),500);return()=>clearTimeout(t)},[pseudo]);
+
+  useEffect(()=>{
+    fetch(`/api/responses?offer_id=${offer.id}`).then(r=>r.json()).then(d=>{if(Array.isArray(d))setResponses(d)}).finally(()=>setLoadingR(false));
+  },[offer.id]);
+
+  const it=gi(offer.title);
+  let pi=null,pq='';try{const p=JSON.parse(offer.price);pi=gi(p.item);pq=p.qty}catch{}
+  let descText='',enchList=[];try{const d=JSON.parse(offer.description);descText=d.text||'';enchList=d.enchants||[]}catch{descText=offer.description||''}
+  const isSh=shiningMembers.map(m=>m.toLowerCase()).includes((offer.author_pseudo||'').toLowerCase());
+
+  const submit=async()=>{
+    if(!pseudo.trim())return;setSending(true);
+    try{await fetch('/api/respond',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({offer_id:offer.id,minecraft_pseudo:pseudo.trim(),discord_pseudo:discord.trim()||null,message:msg.trim()||null})});
+      setSent(true);
+      // Refresh responses
+      const r=await fetch(`/api/responses?offer_id=${offer.id}`);const d=await r.json();if(Array.isArray(d))setResponses(d);
+    }catch{alert('Erreur')}finally{setSending(false)}
+  };
+
+  return(<div className="overlay" onClick={close}><div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:480}}>
+    <button className="modal-x" onClick={close}>×</button>
+
+    {/* Offer info */}
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'.3rem'}}>
+      <div className={`badge badge-${offer.type}`}>{offer.type==='achat'?'Achat':offer.type==='vente'?'Vente':'Mission'}</div>
+      {offer.author_pseudo&&<div className="card-author">
+        <img src={MH(offer.author_pseudo)} alt="" onError={e=>e.target.style.opacity='0'}/>
+        <span>{offer.author_pseudo}</span>
+        {isSh&&<span className="shining-tag">SHINING</span>}
+      </div>}
+    </div>
+
+    <div className="offer-row" style={{marginBottom:'.5rem'}}>
+      {it&&<img src={it.icon} alt="" onError={e=>e.target.style.opacity='0'}/>}
+      <div><h3 style={{fontSize:'1.05rem'}}>{it?it.name:offer.title}</h3>{offer.quantity&&<span className="offer-qty">×{offer.quantity}</span>}</div>
+    </div>
+
+    {enchList.length>0&&<div className="ench-display">{enchList.map(e=><span key={e.id} className="ench-pill">✨ {e.name} {toRoman(e.level)}</span>)}</div>}
+    {descText&&<p style={{marginBottom:'.5rem'}}>{descText}</p>}
+    {pi&&<div className="price-bar"><span className="price-label">{offer.type==='achat'?'Budget':'Prix'}</span>
+      <div className="price-val"><img src={pi.icon} alt="" onError={e=>e.target.style.opacity='0'}/><span>{pq}× {pi.name}</span></div></div>}
+
+    {/* Respond */}
+    {sent?<div className="ok-msg"><span>✅</span><p>Envoyé !</p><small>Ta candidature a été transmise sur Discord.</small></div>:<>
+      <div className="sep"><span>Candidater</span></div>
+      <div className="fld"><label>Pseudo Minecraft *</label><input value={pseudo} onChange={e=>setPseudo(e.target.value)} placeholder="Ton pseudo in-game"/>
+        {dp&&<div className="skin-preview"><img src={MH(dp)} alt=""/><span>{dp}</span></div>}</div>
+      <div className="fld"><label>Pseudo Discord</label><input value={discord} onChange={e=>setDiscord(e.target.value)} placeholder="Optionnel"/></div>
+      <div className="fld"><label>Message</label><textarea value={msg} onChange={e=>setMsg(e.target.value)} placeholder="Optionnel"/></div>
+      <button className="btn-send" onClick={submit} disabled={!pseudo.trim()||sending}>{sending?'Envoi…':'Je suis intéressé'}</button>
+    </>}
+
+    {/* Responses list */}
+    <div className="detail-responses">
+      <h3>Candidatures ({responses.length})</h3>
+      {loadingR?<div className="spin-w"><div className="spin"/></div>:
+        responses.length===0?<p style={{color:'var(--t3)',fontSize:'.82rem'}}>Aucune candidature pour le moment.</p>:
+        responses.map(r=><div key={r.id} className="resp-item">
+          <img src={MH(r.minecraft_pseudo)} alt="" onError={e=>e.target.style.opacity='0'}/>
+          <div className="resp-info">
+            <strong>{r.minecraft_pseudo}</strong>
+            {r.discord_pseudo&&<small>Discord: {r.discord_pseudo}</small>}
+          </div>
+          {r.message&&<span className="resp-msg">{r.message}</span>}
+        </div>)
+      }
+    </div>
+  </div></div>);
+}
+
+// ---- Create Offer Modal ----
+function OfferForm({close,save,isAdmin,offer}){
+  const[pseudo,setPseudo]=useState(offer?.author_pseudo||'');
+  const[type,setType]=useState(offer?.type||'vente');
+  const[itemId,setItemId]=useState(offer?.title||'');
+  const[qty,setQty]=useState(offer?.quantity||'');
+  const[desc,setDesc]=useState('');const[enchants,setEnchants]=useState([]);
+  const[pi,setPi]=useState('');const[pq,setPq]=useState('');
+  const[saving,setSaving]=useState(false);
+  const[dp,setDp]=useState('');
+
+  useEffect(()=>{const t=setTimeout(()=>setDp(pseudo.trim()),500);return()=>clearTimeout(t)},[pseudo]);
+  useEffect(()=>{if(offer?.description){try{const d=JSON.parse(offer.description);setDesc(d.text||'');setEnchants(d.enchants||[])}catch{setDesc(offer.description)}}
+    if(offer?.price){try{const p=JSON.parse(offer.price);setPi(p.item||'');setPq(p.qty||'')}catch{}}},[offer]);
+
+  const go=async()=>{
+    if(!itemId||!pseudo.trim())return;setSaving(true);
+    const descJson=JSON.stringify({text:desc.trim(),enchants});
+    await save({...(offer?.id?{id:offer.id}:{}),type,title:itemId,description:descJson,quantity:qty,price:pi?JSON.stringify({item:pi,qty:pq}):'',author_pseudo:pseudo.trim()});
+    setSaving(false);
+  };
+
+  const showEnch=itemId&&ENCHANTABLE.test(itemId);
+
   return(<div className="overlay" onClick={close}><div className="modal" onClick={e=>e.stopPropagation()}>
     <button className="modal-x" onClick={close}>×</button>
-    {sent?<div className="ok-msg"><span>✅</span><p>Envoyé !</p><small>Transmis sur notre Discord.</small></div>:<>
-      <h2>Répondre</h2>
-      <p style={{display:'flex',alignItems:'center',gap:'.35rem'}}>{it&&<img src={it.icon} alt="" style={{width:18,height:18,imageRendering:'pixelated'}} onError={e=>e.target.style.opacity='0'}/>}{it?it.name:o.title}{o.quantity&&` ×${o.quantity}`}</p>
-      <div className="fld"><label>Pseudo Minecraft *</label><input value={p} onChange={e=>setP(e.target.value)} placeholder="Ton pseudo in-game"/>
-        {dp&&<div className="skin-preview"><img src={MH(dp)} alt=""/><span>{dp}</span></div>}</div>
-      <div className="fld"><label>Pseudo Discord</label><input value={d} onChange={e=>setD(e.target.value)} placeholder="Optionnel"/></div>
-      <div className="fld"><label>Message</label><textarea value={m} onChange={e=>setM(e.target.value)} placeholder="Optionnel"/></div>
-      <button className="btn-send" onClick={go} disabled={!p.trim()||sending}>{sending?'Envoi…':'Envoyer'}</button>
-    </>}
-  </div></div>);
-}
+    <h2>{offer?'Modifier':'Créer une offre'}</h2>
+    <p className="modal-subtitle">Visible par tout le serveur Arkunir</p>
 
-function OForm({o,close,save}){
-  const[type,setType]=useState(o?.type||'vente');const[itemId,setItemId]=useState(o?.title||'');const[qty,setQty]=useState(o?.quantity||'');
-  const[desc,setDesc]=useState('');const[enchants,setEnchants]=useState([]);
-  const[pi,setPi]=useState('');const[pq,setPq]=useState('');const[saving,setSaving]=useState(false);
-  useEffect(()=>{
-    if(o?.price){try{const p=JSON.parse(o.price);setPi(p.item||'');setPq(p.qty||'')}catch{}}
-    if(o?.description){try{const d=JSON.parse(o.description);setDesc(d.text||'');setEnchants(d.enchants||[])}catch{setDesc(o.description)}}
-  },[o]);
-  const go=async()=>{if(!itemId)return;setSaving(true);
-    const descJson=JSON.stringify({text:desc.trim(),enchants});
-    await save({type,title:itemId,description:descJson,quantity:qty,price:pi?JSON.stringify({item:pi,qty:pq}):''});setSaving(false)};
-  const showEnch=itemId&&ENCHANTABLE.test(itemId);
-  return(<div className="overlay" onClick={close}><div className="modal" onClick={e=>e.stopPropagation()}>
-    <button className="modal-x" onClick={close}>×</button><h2>{o?'Modifier':'Nouvelle offre'}</h2>
-    <div className="fld"><label>Type</label><select value={type} onChange={e=>setType(e.target.value)}><option value="vente">Vente</option><option value="achat">Achat</option><option value="emploi">Emploi</option></select></div>
-    <ItemPicker value={itemId} onChange={v=>{setItemId(v);if(!ENCHANTABLE.test(v))setEnchants([])}} label={type==='achat'?'Item recherché':'Item à vendre'}/>
+    <div className="fld"><label>Ton pseudo Minecraft *</label><input value={pseudo} onChange={e=>setPseudo(e.target.value)} placeholder="Pseudo in-game"/>
+      {dp&&<div className="skin-preview"><img src={MH(dp)} alt=""/><span>{dp}</span></div>}</div>
+
+    <div className="fld"><label>Type</label><select value={type} onChange={e=>setType(e.target.value)}>
+      <option value="vente">Vente</option><option value="achat">Achat</option><option value="mission">Mission</option></select></div>
+
+    <ItemPicker value={itemId} onChange={v=>{setItemId(v);if(!ENCHANTABLE.test(v))setEnchants([])}} label={type==='achat'?'Item recherché':'Item proposé'}/>
+
     <div className="fld"><label>Quantité</label><input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value.replace(/\D/g,''))} placeholder="64"/></div>
+
     {showEnch&&<EnchantPicker enchants={enchants} onChange={setEnchants}/>}
-    <div className="fld"><label>Notes (optionnel)</label><textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Infos supplémentaires..."/></div>
+
+    <div className="fld"><label>Notes (optionnel)</label><textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Détails supplémentaires..."/></div>
+
     <div className="sep"><span>{type==='achat'?'En échange de':'Prix demandé'}</span></div>
+
     <ItemPicker value={pi} onChange={setPi} label="Item en paiement"/>
     <div className="fld"><label>Quantité demandée</label><input type="number" min="1" value={pq} onChange={e=>setPq(e.target.value.replace(/\D/g,''))} placeholder="32"/></div>
-    <button className="btn-send" onClick={go} disabled={!itemId||saving}>{saving?'Sauvegarde…':o?'Mettre à jour':'Publier'}</button>
+
+    <button className="btn-send" onClick={go} disabled={!itemId||!pseudo.trim()||saving}>{saving?'Publication…':'Publier l\'offre'}</button>
   </div></div>);
 }
 
-// ==========================================
-// SERVICE BOOKING MODAL
-// ==========================================
+// ---- Service Booking Modal ----
 function SvcModal({svc,close}){
   const[p,setP]=useState('');const[d,setD]=useState('');const[sending,setSending]=useState(false);const[sent,setSent]=useState(false);const[dp,setDp]=useState('');
   useEffect(()=>{const t=setTimeout(()=>setDp(p.trim()),500);return()=>clearTimeout(t)},[p]);
@@ -376,9 +413,9 @@ function SvcModal({svc,close}){
       setSent(true)}catch{alert('Erreur')}finally{setSending(false)}};
   return(<div className="overlay" onClick={close}><div className="modal" onClick={e=>e.stopPropagation()}>
     <button className="modal-x" onClick={close}>×</button>
-    {sent?<div className="ok-msg"><span>✅</span><p>Réservation envoyée !</p><small>On te contactera sur Discord pour organiser ça.</small></div>:<>
+    {sent?<div className="ok-msg"><span>✅</span><p>Réservation envoyée !</p><small>On te contactera sur Discord.</small></div>:<>
       <h2>Réserver</h2>
-      <p style={{display:'flex',alignItems:'center',gap:'.35rem'}}>
+      <p className="modal-subtitle" style={{display:'flex',alignItems:'center',gap:'.3rem'}}>
         {svc.icon&&<img src={svc.icon} alt="" style={{width:20,height:20,imageRendering:'pixelated'}} onError={e=>e.target.style.opacity='0'}/>}
         {svc.name} — {svc.price}
       </p>
