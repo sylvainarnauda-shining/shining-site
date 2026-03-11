@@ -281,8 +281,8 @@ export default function Home(){
 
     {/* MODALS */}
     {showLogin&&<LoginModal close={()=>setShowLogin(false)} pw={pw} setPw={setPw} login={login} err={aErr}/>}
-    {showUserLogin&&<UserLoginModal close={()=>setShowUserLogin(false)} onLogin={(p)=>{setMyPseudo(p);setShowUserLogin(false)}}/>}
-    {newOfferModal&&<OfferForm close={()=>{setNewOfferModal(false);load()}} save={saveOffer} isAdmin={isA} myPseudo={myPseudo}/>}
+    {showUserLogin&&<UserLoginModal close={()=>setShowUserLogin(false)} onLogin={(p)=>{setMyPseudo(p);setShowUserLogin(false)}} shiningMembers={shiningMembers}/>}
+    {newOfferModal&&<OfferForm close={()=>{setNewOfferModal(false);load()}} save={saveOffer} isAdmin={isA} myPseudo={myPseudo} shiningMembers={shiningMembers}/>}
     {detailModal&&<DetailModal offer={detailModal} close={()=>{setDetailModal(null);load()}} isAdmin={isA} shiningMembers={shiningMembers} pw={pw} myPseudo={myPseudo}/>}
     {svcModal&&<SvcModal svc={svcModal} close={()=>setSvcModal(null)} myPseudo={myPseudo}/>}
   </>);
@@ -301,16 +301,44 @@ function LoginModal({close,pw,setPw,login,err}){
 }
 
 // ---- User Login Modal (pseudo MC only) ----
-function UserLoginModal({close,onLogin}){
+function UserLoginModal({close,onLogin,shiningMembers}){
   const[p,setP]=useState('');const[dp,setDp]=useState('');
+  const[pw,setPw]=useState('');const[err,setErr]=useState('');const[checking,setChecking]=useState(false);
   useEffect(()=>{const t=setTimeout(()=>setDp(p.trim()),500);return()=>clearTimeout(t)},[p]);
+  const isSh=p.trim()&&shiningMembers.map(m=>m.toLowerCase()).includes(p.trim().toLowerCase());
+
+  const handleLogin=async()=>{
+    if(!p.trim())return;
+    if(isSh){
+      // Shining pseudo → verify admin password
+      setChecking(true);setErr('');
+      try{
+        const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+        if(r.ok){onLogin(p.trim())}else{setErr('Mot de passe incorrect')}
+      }catch{setErr('Erreur réseau')}finally{setChecking(false)}
+    }else{
+      // Normal pseudo → direct login
+      onLogin(p.trim());
+    }
+  };
+
   return(<div className="overlay" onClick={close}><div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:380,textAlign:'center'}}>
     <button className="modal-x" onClick={close}>×</button>
     <h2>👤 Connexion</h2>
     <p className="modal-subtitle">Entre ton pseudo Minecraft pour gérer tes offres</p>
-    <div className="fld"><input value={p} onChange={e=>setP(e.target.value)} placeholder="Ton pseudo in-game" onKeyDown={e=>e.key==='Enter'&&p.trim()&&onLogin(p.trim())}/>
-      {dp&&<div className="skin-preview" style={{justifyContent:'center',marginTop:'.5rem'}}><img src={MH(dp)} alt=""/><span>{dp}</span></div>}</div>
-    <button className="btn-send" onClick={()=>p.trim()&&onLogin(p.trim())} disabled={!p.trim()}>Se connecter</button>
+    <div className="fld"><input value={p} onChange={e=>setP(e.target.value)} placeholder="Ton pseudo in-game" onKeyDown={e=>e.key==='Enter'&&!isSh&&handleLogin()}/>
+      {dp&&<div className="skin-preview" style={{justifyContent:'center',marginTop:'.5rem'}}>
+        <img src={MH(dp)} alt=""/>
+        <span>{dp}</span>
+        {isSh&&<span className="shining-tag">SHINING</span>}
+      </div>}
+    </div>
+    {isSh&&<>
+      <p style={{fontSize:'.75rem',color:'var(--p4)',marginBottom:'.5rem'}}>⭐ Pseudo Shining détecté — mot de passe admin requis</p>
+      <div className="fld"><input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="Mot de passe admin" onKeyDown={e=>e.key==='Enter'&&handleLogin()}/></div>
+    </>}
+    {err&&<p style={{color:'var(--red)',fontSize:'.78rem',marginBottom:'.4rem'}}>{err}</p>}
+    <button className="btn-send" onClick={handleLogin} disabled={!p.trim()||(isSh&&!pw.trim())||checking}>{checking?'Vérification…':'Se connecter'}</button>
   </div></div>);
 }
 
@@ -404,7 +432,7 @@ function DetailModal({offer,close,isAdmin,shiningMembers,pw,myPseudo}){
 }
 
 // ---- Create Offer Modal ----
-function OfferForm({close,save,isAdmin,offer,myPseudo}){
+function OfferForm({close,save,isAdmin,offer,myPseudo,shiningMembers}){
   const[pseudo,setPseudo]=useState(offer?.author_pseudo||myPseudo||'');
   const[type,setType]=useState(offer?.type||'vente');
   const[itemId,setItemId]=useState(offer?.title||'');
@@ -418,8 +446,11 @@ function OfferForm({close,save,isAdmin,offer,myPseudo}){
   useEffect(()=>{if(offer?.description){try{const d=JSON.parse(offer.description);setDesc(d.text||'');setEnchants(d.enchants||[])}catch{setDesc(offer.description)}}
     if(offer?.price){try{const p=JSON.parse(offer.price);setPi(p.item||'');setPq(p.qty||'')}catch{}}},[offer]);
 
+  const pseudoIsShining=pseudo.trim()&&(shiningMembers||[]).map(m=>m.toLowerCase()).includes(pseudo.trim().toLowerCase());
+  const pseudoBlocked=pseudoIsShining&&(!myPseudo||myPseudo.toLowerCase()!==pseudo.trim().toLowerCase());
+
   const go=async()=>{
-    if(!itemId||!pseudo.trim())return;setSaving(true);
+    if(!itemId||!pseudo.trim()||pseudoBlocked)return;setSaving(true);
     const descJson=JSON.stringify({text:desc.trim(),enchants});
     await save({...(offer?.id?{id:offer.id}:{}),type,title:itemId,description:descJson,quantity:qty,price:pi?JSON.stringify({item:pi,qty:pq}):'',author_pseudo:pseudo.trim()});
     setSaving(false);
@@ -451,8 +482,9 @@ function OfferForm({close,save,isAdmin,offer,myPseudo}){
     <ItemPicker value={pi} onChange={setPi} label="Item en paiement"/>
     <div className="fld"><label>Quantité demandée</label><input type="number" min="1" value={pq} onChange={e=>setPq(e.target.value.replace(/\D/g,''))} placeholder="32"/></div>
 
+    {pseudoBlocked&&<p style={{fontSize:'.75rem',color:'var(--red)',textAlign:'center',margin:'.3rem 0'}}>🔒 Ce pseudo est un membre Shining. Connecte-toi d'abord via "Se connecter" avec ce pseudo.</p>}
     <p style={{fontSize:'.72rem',color:'var(--t3)',textAlign:'center',margin:'.5rem 0',lineHeight:1.4}}>⏰ Les offres sont automatiquement supprimées après 4 heures.</p>
-    <button className="btn-send" onClick={go} disabled={!itemId||!pseudo.trim()||saving}>{saving?'Publication…':'Publier l\'offre'}</button>
+    <button className="btn-send" onClick={go} disabled={!itemId||!pseudo.trim()||saving||pseudoBlocked}>{saving?'Publication…':'Publier l\'offre'}</button>
   </div></div>);
 }
 
