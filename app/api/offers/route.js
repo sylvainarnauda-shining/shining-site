@@ -75,10 +75,29 @@ export async function PUT(request) {
 }
 
 export async function DELETE(request) {
-  if (!verifyAdmin(request)) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
   const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+  const authorPseudo = searchParams.get('author_pseudo');
   const admin = getAdminClient();
-  const { error } = await admin.from('offers').delete().eq('id', searchParams.get('id'));
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ success: true });
+
+  // Admin can delete any offer
+  if (verifyAdmin(request)) {
+    const { error } = await admin.from('offers').delete().eq('id', id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true });
+  }
+
+  // Author can delete their own offer by matching pseudo
+  if (authorPseudo) {
+    const { data: offer } = await admin.from('offers').select('author_pseudo').eq('id', id).single();
+    if (!offer) return NextResponse.json({ error: 'Offre introuvable' }, { status: 404 });
+    if (offer.author_pseudo.toLowerCase() !== authorPseudo.toLowerCase()) {
+      return NextResponse.json({ error: 'Ce n\'est pas ton offre' }, { status: 403 });
+    }
+    const { error } = await admin.from('offers').delete().eq('id', id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true });
+  }
+
+  return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 }

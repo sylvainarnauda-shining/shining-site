@@ -111,7 +111,7 @@ export default function Home(){
   const toggleFarm=async()=>{const nv=!farmOpen;setSettings(p=>({...p,farm_xp_open:String(nv)}));await fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${pw}`},body:JSON.stringify({key:'farm_xp_open',value:String(nv)})})};
   const saveSetting=async(key,value)=>{await fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${pw}`},body:JSON.stringify({key,value})});load()};
   const closeOffer=async(o)=>{await fetch('/api/offers',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${pw}`},body:JSON.stringify({...o,status:'closed'})});load()};
-  const delOffer=async(id)=>{if(!confirm('Supprimer ?'))return;await fetch(`/api/offers?id=${id}`,{method:'DELETE',headers:{Authorization:`Bearer ${pw}`}});load()};
+  const delOffer=async(id)=>{if(!confirm('Supprimer cette offre ?'))return;try{const r=await fetch(`/api/offers?id=${id}`,{method:'DELETE',headers:{Authorization:`Bearer ${pw}`}});if(!r.ok){const d=await r.json();alert('Erreur: '+d.error)}else{load()}}catch(e){alert('Erreur réseau');console.error(e)}};
 
   const saveOffer=async(data)=>{
     const method=data.id?'PUT':'POST';
@@ -261,7 +261,7 @@ export default function Home(){
     {/* MODALS */}
     {showLogin&&<LoginModal close={()=>setShowLogin(false)} pw={pw} setPw={setPw} login={login} err={aErr}/>}
     {newOfferModal&&<OfferForm close={()=>setNewOfferModal(false)} save={saveOffer} isAdmin={isA}/>}
-    {detailModal&&<DetailModal offer={detailModal} close={()=>setDetailModal(null)} isAdmin={isA} shiningMembers={shiningMembers}/>}
+    {detailModal&&<DetailModal offer={detailModal} close={()=>{setDetailModal(null);load()}} isAdmin={isA} shiningMembers={shiningMembers} pw={pw}/>}
     {svcModal&&<SvcModal svc={svcModal} close={()=>setSvcModal(null)}/>}
   </>);
 }
@@ -279,12 +279,13 @@ function LoginModal({close,pw,setPw,login,err}){
 }
 
 // ---- Offer Detail Modal ----
-function DetailModal({offer,close,isAdmin,shiningMembers}){
+function DetailModal({offer,close,isAdmin,shiningMembers,pw}){
   const allItems=useItems();
   const[responses,setResponses]=useState([]);const[loadingR,setLoadingR]=useState(true);
   const[pseudo,setPseudo]=useState('');const[discord,setDiscord]=useState('');const[msg,setMsg]=useState('');
   const[sending,setSending]=useState(false);const[sent,setSent]=useState(false);
   const[dp,setDp]=useState('');
+  const[deleting,setDeleting]=useState(false);
 
   useEffect(()=>{const t=setTimeout(()=>setDp(pseudo.trim()),500);return()=>clearTimeout(t)},[pseudo]);
 
@@ -338,6 +339,13 @@ function DetailModal({offer,close,isAdmin,shiningMembers}){
       <div className="fld"><label>Pseudo Discord</label><input value={discord} onChange={e=>setDiscord(e.target.value)} placeholder="Optionnel"/></div>
       <div className="fld"><label>Message</label><textarea value={msg} onChange={e=>setMsg(e.target.value)} placeholder="Optionnel"/></div>
       <button className="btn-send" onClick={submit} disabled={!pseudo.trim()||sending}>{sending?'Envoi…':'Je suis intéressé'}</button>
+      {/* Author can delete their own offer */}
+      {pseudo.trim()&&pseudo.trim().toLowerCase()===offer.author_pseudo?.toLowerCase()&&(
+        <button style={{width:'100%',padding:'.5rem',background:'transparent',border:'1px solid rgba(239,68,68,.3)',color:'var(--red)',borderRadius:'8px',fontFamily:'Outfit,sans-serif',fontWeight:600,fontSize:'.78rem',cursor:'pointer',marginTop:'.4rem'}}
+          onClick={async()=>{if(!confirm('Supprimer ton offre ?'))return;setDeleting(true);
+            await fetch(`/api/offers?id=${offer.id}&author_pseudo=${encodeURIComponent(pseudo.trim())}`,{method:'DELETE'});
+            close()}} disabled={deleting}>{deleting?'Suppression…':'🗑 Supprimer mon offre'}</button>
+      )}
     </>}
 
     {/* Responses list */}
