@@ -78,8 +78,12 @@ export default function Home(){
   const isShining=(pseudo)=>shiningMembers.map(m=>m.toLowerCase()).includes((pseudo||'').toLowerCase());
 
   const load=useCallback(async()=>{
-    try{const r=await fetch('/api/offers');const d=await r.json();if(Array.isArray(d))setOffers(d)}catch(e){console.error(e)}finally{setLoading(false)}
-    try{const r2=await fetch('/api/settings');const d2=await r2.json();if(Array.isArray(d2)){const s={};d2.forEach(x=>{s[x.key]=x.value});setSettings(prev=>({...prev,...s}))}}catch(e){console.error(e)}
+    try{
+      const[r1,r2]=await Promise.all([fetch('/api/offers'),fetch('/api/settings')]);
+      const[d1,d2]=await Promise.all([r1.json(),r2.json()]);
+      if(Array.isArray(d1))setOffers(d1);
+      if(Array.isArray(d2)){const s={};d2.forEach(x=>{s[x.key]=x.value});setSettings(prev=>({...prev,...s}))}
+    }catch(e){console.error(e)}finally{setLoading(false)}
   },[]);
   useEffect(()=>{load()},[load]);
 
