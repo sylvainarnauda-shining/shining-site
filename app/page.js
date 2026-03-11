@@ -72,7 +72,7 @@ export default function Home(){
   const[svcModal,setSvcModal]=useState(null);
   const[pw,setPw]=useState('');const[isA,setIsA]=useState(false);const[aErr,setAErr]=useState('');
   const[showAdmin,setShowAdmin]=useState(false);const[showLogin,setShowLogin]=useState(false);
-  const[settings,setSettings]=useState({farm_xp_open:'false',farm_xp_price:'15',visit_price:'2',shining_members:'[]'});
+  const[settings,setSettings]=useState({farm_xp_open:'false',farm_xp_price:'15',visit_price:'2',visit_open:'true',shining_members:'[]'});
 
   const shiningMembers=(() => {try{return JSON.parse(settings.shining_members)}catch{return[]}})();
   const isShining=(pseudo)=>shiningMembers.map(m=>m.toLowerCase()).includes((pseudo||'').toLowerCase());
@@ -105,12 +105,13 @@ export default function Home(){
 
   const farmOpen=settings.farm_xp_open==='true';
   const farmPrice=settings.farm_xp_price||'15';
+  const visitOpen=settings.visit_open==='true';
   const visitPrice=settings.visit_price||'2';
 
   const login=async()=>{setAErr('');try{const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});if(r.ok){setIsA(true);setShowLogin(false);load()}else setAErr('Mot de passe incorrect')}catch{setAErr('Erreur')}};
   const toggleFarm=async()=>{const nv=!farmOpen;setSettings(p=>({...p,farm_xp_open:String(nv)}));await fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${pw}`},body:JSON.stringify({key:'farm_xp_open',value:String(nv)})})};
+  const toggleVisit=async()=>{const nv=!visitOpen;setSettings(p=>({...p,visit_open:String(nv)}));await fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${pw}`},body:JSON.stringify({key:'visit_open',value:String(nv)})})};
   const saveSetting=async(key,value)=>{await fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${pw}`},body:JSON.stringify({key,value})});load()};
-  const closeOffer=async(o)=>{await fetch('/api/offers',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${pw}`},body:JSON.stringify({...o,status:'closed'})});load()};
   const delOffer=async(id)=>{if(!confirm('Supprimer cette offre ?'))return;try{const r=await fetch(`/api/offers?id=${id}`,{method:'DELETE',headers:{Authorization:`Bearer ${pw}`}});if(!r.ok){const d=await r.json();alert('Erreur: '+d.error)}else{load()}}catch(e){alert('Erreur réseau');console.error(e)}};
 
   const saveOffer=async(data)=>{
@@ -166,7 +167,9 @@ export default function Home(){
           <div className="svc-body"><h3>Visite de la team</h3><p>Visite guidée — par personne</p></div>
           <div className="svc-right">
             <div className="svc-price"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>{visitPrice}</div>
-            <button className="btn-book" onClick={()=>setSvcModal({name:'Visite de la team',price:visitPrice+' diamants',icon:MAP_ICON})}>Réserver</button>
+            <span className={`status ${visitOpen?'status-open':'status-closed'}`}>{visitOpen?'Ouvert':'Fermé'}</span>
+            {isA&&<button className={`btn-toggle ${visitOpen?'open':'close'}`} onClick={toggleVisit}>{visitOpen?'Fermer':'Ouvrir'}</button>}
+            {visitOpen&&<button className="btn-book" onClick={()=>setSvcModal({name:'Visite de la team',price:visitPrice+' diamants',icon:MAP_ICON})}>Réserver</button>}
           </div>
         </div>
       </div>
@@ -237,9 +240,10 @@ export default function Home(){
           <button className="btn-save" onClick={()=>saveSetting('visit_price',settings.visit_price)}>Sauvegarder</button>
         </div>
         <div className="admin-setting">
-          <label>Membres Shining (1 pseudo par ligne)</label>
-          <textarea value={(() => {try{return JSON.parse(settings.shining_members).join('\n')}catch{return settings.shining_members}})()}
-            onChange={e=>setSettings(p=>({...p,shining_members:JSON.stringify(e.target.value.split('\n').filter(x=>x.trim()))}))}/>
+          <label>Membres Shining (séparés par des virgules)</label>
+          <input value={(() => {try{return JSON.parse(settings.shining_members).join(', ')}catch{return settings.shining_members}})()}
+            onChange={e=>setSettings(p=>({...p,shining_members:JSON.stringify(e.target.value.split(',').map(x=>x.trim()).filter(x=>x))}))}
+            placeholder="Miam__, joueur2, joueur3"/>
           <button className="btn-save" onClick={()=>saveSetting('shining_members',settings.shining_members)}>Sauvegarder</button>
         </div>
       </div>
@@ -248,8 +252,7 @@ export default function Home(){
         {offers.map(o=><div key={o.id} className="adm-item">
           <div className="adm-info"><h4>{gi(o.title)?.name||o.title} {o.author_pseudo&&<span style={{color:'var(--t3)',fontWeight:400}}>— {o.author_pseudo}</span>}</h4></div>
           <div className="adm-acts">
-            <button className="btn-s c" onClick={()=>closeOffer(o)}>Fermer</button>
-            <button className="btn-s x" onClick={()=>delOffer(o.id)}>Suppr</button>
+            <button className="btn-s x" onClick={()=>delOffer(o.id)}>Supprimer</button>
           </div>
         </div>)}
         {offers.length===0&&<p style={{color:'var(--t3)',fontSize:'.85rem'}}>Aucune offre.</p>}
