@@ -286,6 +286,7 @@ export default function Home(){
               {it.avgPrice!==null&&(()=>{const ci=gi(it.avgPriceCurrency);return <div className="stats-price">
                 {ci&&<img src={ci.icon} alt="" style={{width:14,height:14,imageRendering:'pixelated'}} onError={e=>e.target.style.opacity='0'}/>}
                 <span>~{it.avgPrice}</span>
+                <span style={{fontSize:'.55rem',color:'var(--t3)',marginLeft:'.15rem'}}>{it.priceLabel||''}</span>
               </div>})()}
             </div>
           )})}

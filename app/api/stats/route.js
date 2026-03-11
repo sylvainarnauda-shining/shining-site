@@ -72,16 +72,20 @@ export async function GET() {
       Object.entries(d.pricesByCurrency).forEach(([currency, prices]) => {
         if (prices.length > bestPrices.length) { bestCurrency = currency; bestPrices = prices; }
       });
+      const totalOffers = d.sells + d.buys;
       return {
         id,
-        total: d.sells + d.buys,
+        total: totalOffers,
         sells: d.sells,
         buys: d.buys,
         totalQty: d.totalQty,
         avgPrice: bestPrices.length >= 2
           ? Math.round(bestPrices.reduce((a, b) => a + b, 0) / bestPrices.length * 100) / 100
-          : null,
-        avgPriceCurrency: bestPrices.length >= 2 ? bestCurrency : null,
+          : (bestPrices.length === 1 && totalOffers >= 2)
+            ? Math.round(bestPrices[0] * 100) / 100
+            : null,
+        avgPriceCurrency: bestPrices.length >= 1 && (bestPrices.length >= 2 || totalOffers >= 2) ? bestCurrency : null,
+        priceLabel: bestPrices.length >= 2 ? 'moy.' : 'dernier prix',
       };
     })
     .sort((a, b) => b.total - a.total)
