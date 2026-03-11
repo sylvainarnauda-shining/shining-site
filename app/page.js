@@ -66,6 +66,7 @@ function EnchantPicker({enchants,onChange}){
 // MAIN PAGE
 // ==========================================
 export default function Home(){
+  const allItems=useItems(); // triggers re-render when items load
   const[offers,setOffers]=useState([]);const[loading,setLoading]=useState(true);const[tab,setTab]=useState('all');
   const[detailModal,setDetailModal]=useState(null);const[newOfferModal,setNewOfferModal]=useState(false);
   const[svcModal,setSvcModal]=useState(null);
@@ -274,6 +275,7 @@ function LoginModal({close,pw,setPw,login,err}){
 
 // ---- Offer Detail Modal ----
 function DetailModal({offer,close,isAdmin,shiningMembers}){
+  const allItems=useItems();
   const[responses,setResponses]=useState([]);const[loadingR,setLoadingR]=useState(true);
   const[pseudo,setPseudo]=useState('');const[discord,setDiscord]=useState('');const[msg,setMsg]=useState('');
   const[sending,setSending]=useState(false);const[sent,setSent]=useState(false);
