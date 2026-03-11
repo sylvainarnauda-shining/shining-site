@@ -70,6 +70,7 @@ export default function Home(){
   const[offers,setOffers]=useState([]);const[loading,setLoading]=useState(true);const[tab,setTab]=useState('all');
   const[detailModal,setDetailModal]=useState(null);const[newOfferModal,setNewOfferModal]=useState(false);
   const[svcModal,setSvcModal]=useState(null);
+  const[myPseudo,setMyPseudo]=useState('');const[showUserLogin,setShowUserLogin]=useState(false);const[pseudoInput,setPseudoInput]=useState('');
   const[pw,setPw]=useState('');const[isA,setIsA]=useState(false);const[aErr,setAErr]=useState('');
   const[showAdmin,setShowAdmin]=useState(false);const[showLogin,setShowLogin]=useState(false);
   const[settings,setSettings]=useState({farm_xp_open:'false',farm_xp_price:'15',visit_price:'2',visit_open:'true',shining_members:'[]'});
@@ -101,7 +102,7 @@ export default function Home(){
     const aS=isShining(a.author_pseudo)?1:0;const bS=isShining(b.author_pseudo)?1:0;
     if(aS!==bS)return bS-aS;return new Date(b.created_at)-new Date(a.created_at);
   });
-  const filtered=tab==='all'?sorted:sorted.filter(o=>o.type===tab);
+  const filtered=tab==='all'?sorted:tab==='mine'?sorted.filter(o=>(o.author_pseudo||'').toLowerCase()===myPseudo.toLowerCase()):sorted.filter(o=>o.type===tab);
 
   const farmOpen=settings.farm_xp_open==='true';
   const farmPrice=settings.farm_xp_price||'15';
@@ -126,10 +127,20 @@ export default function Home(){
     <nav className="nav">
       <a href="#" className="nav-brand"><div className="nav-logo">S</div><span className="nav-name">SHINING</span></a>
       <div className="nav-right">
+        {myPseudo?<>
+          <div className="nav-user" onClick={()=>setTab('mine')} style={{display:'flex',alignItems:'center',gap:'.3rem',cursor:'pointer',padding:'.15rem .5rem',borderRadius:'6px',border:'1px solid var(--border)',background:'rgba(139,92,246,.04)'}}>
+            <img src={MH(myPseudo)} alt="" style={{width:20,height:20,borderRadius:3,imageRendering:'pixelated'}} onError={e=>e.target.style.opacity='0'}/>
+            <span style={{fontSize:'.75rem',fontWeight:600,color:'var(--t1)'}}>{myPseudo}</span>
+            {isShining(myPseudo)&&<span className="shining-tag">SHINING</span>}
+          </div>
+          <button className="nav-btn" onClick={()=>{setMyPseudo('');setTab('all')}}>Déco</button>
+        </>:
+          <button className="nav-btn" onClick={()=>setShowUserLogin(true)}>👤 Se connecter</button>
+        }
         <span className="nav-pill">Arkunir</span>
         {isA?<>
           <button className={`nav-btn ${showAdmin?'active':''}`} onClick={()=>setShowAdmin(!showAdmin)}>⚙ Admin</button>
-          <button className="nav-btn" onClick={()=>{setIsA(false);setPw('');setShowAdmin(false)}}>Déco</button>
+          <button className="nav-btn" onClick={()=>{setIsA(false);setPw('');setShowAdmin(false)}}>Déco admin</button>
         </>:
           <button className="nav-btn" onClick={()=>setShowLogin(true)}>🔒 Admin</button>
         }
@@ -190,7 +201,7 @@ export default function Home(){
       <h2 className="section-heading">Offres actives</h2>
       <div className="tabs-row">
         <div className="tabs">
-          {[{k:'all',l:'Tout'},{k:'achat',l:'Achats'},{k:'vente',l:'Ventes'},{k:'mission',l:'Missions'}].map(t=>
+          {[{k:'all',l:'Tout'},{k:'achat',l:'Achats'},{k:'vente',l:'Ventes'},{k:'mission',l:'Missions'},...(myPseudo?[{k:'mine',l:'Mes offres'}]:[])].map(t=>
             <button key={t.k} className={`tab ${tab===t.k?'active':''}`} onClick={()=>setTab(t.k)}>{t.l}</button>)}
         </div>
         <button className="btn-new-offer" onClick={()=>setNewOfferModal(true)}>+ Créer une offre</button>
@@ -239,11 +250,18 @@ export default function Home(){
           <input type="number" value={settings.visit_price||''} onChange={e=>setSettings(p=>({...p,visit_price:e.target.value}))}/>
           <button className="btn-save" onClick={()=>saveSetting('visit_price',settings.visit_price)}>Sauvegarder</button>
         </div>
-        <div className="admin-setting">
-          <label>Membres Shining (séparés par des virgules)</label>
-          <input value={(() => {try{return JSON.parse(settings.shining_members).join(', ')}catch{return settings.shining_members}})()}
-            onChange={e=>setSettings(p=>({...p,shining_members:JSON.stringify(e.target.value.split(',').map(x=>x.trim()).filter(x=>x))}))}
-            placeholder="Miam__, joueur2, joueur3"/>
+        <div className="admin-setting" style={{gridColumn:'1/-1'}}>
+          <label>Membres Shining</label>
+          <div style={{display:'flex',flexDirection:'column',gap:'.3rem'}}>
+            {shiningMembers.map((m,i)=><div key={i} style={{display:'flex',gap:'.3rem'}}>
+              <input value={m} onChange={e=>{const nw=[...shiningMembers];nw[i]=e.target.value;setSettings(p=>({...p,shining_members:JSON.stringify(nw)}))}}
+                style={{flex:1}} placeholder="Pseudo MC"/>
+              <button className="btn-s x" onClick={()=>{const nw=shiningMembers.filter((_,j)=>j!==i);setSettings(p=>({...p,shining_members:JSON.stringify(nw)}))}}
+                style={{padding:'.3rem .6rem'}}>✕</button>
+            </div>)}
+            <button style={{padding:'.35rem .7rem',background:'rgba(139,92,246,.08)',border:'1px dashed rgba(139,92,246,.2)',borderRadius:'6px',color:'var(--p4)',fontFamily:'Outfit,sans-serif',fontSize:'.78rem',fontWeight:600,cursor:'pointer'}}
+              onClick={()=>setSettings(p=>({...p,shining_members:JSON.stringify([...shiningMembers,''])}))}>+ Ajouter un membre</button>
+          </div>
           <button className="btn-save" onClick={()=>saveSetting('shining_members',settings.shining_members)}>Sauvegarder</button>
         </div>
       </div>
@@ -263,9 +281,10 @@ export default function Home(){
 
     {/* MODALS */}
     {showLogin&&<LoginModal close={()=>setShowLogin(false)} pw={pw} setPw={setPw} login={login} err={aErr}/>}
-    {newOfferModal&&<OfferForm close={()=>setNewOfferModal(false)} save={saveOffer} isAdmin={isA}/>}
-    {detailModal&&<DetailModal offer={detailModal} close={()=>{setDetailModal(null);load()}} isAdmin={isA} shiningMembers={shiningMembers} pw={pw}/>}
-    {svcModal&&<SvcModal svc={svcModal} close={()=>setSvcModal(null)}/>}
+    {showUserLogin&&<UserLoginModal close={()=>setShowUserLogin(false)} onLogin={(p)=>{setMyPseudo(p);setShowUserLogin(false)}}/>}
+    {newOfferModal&&<OfferForm close={()=>{setNewOfferModal(false);load()}} save={saveOffer} isAdmin={isA} myPseudo={myPseudo}/>}
+    {detailModal&&<DetailModal offer={detailModal} close={()=>{setDetailModal(null);load()}} isAdmin={isA} shiningMembers={shiningMembers} pw={pw} myPseudo={myPseudo}/>}
+    {svcModal&&<SvcModal svc={svcModal} close={()=>setSvcModal(null)} myPseudo={myPseudo}/>}
   </>);
 }
 
@@ -281,14 +300,29 @@ function LoginModal({close,pw,setPw,login,err}){
   </div></div>);
 }
 
+// ---- User Login Modal (pseudo MC only) ----
+function UserLoginModal({close,onLogin}){
+  const[p,setP]=useState('');const[dp,setDp]=useState('');
+  useEffect(()=>{const t=setTimeout(()=>setDp(p.trim()),500);return()=>clearTimeout(t)},[p]);
+  return(<div className="overlay" onClick={close}><div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:380,textAlign:'center'}}>
+    <button className="modal-x" onClick={close}>×</button>
+    <h2>👤 Connexion</h2>
+    <p className="modal-subtitle">Entre ton pseudo Minecraft pour gérer tes offres</p>
+    <div className="fld"><input value={p} onChange={e=>setP(e.target.value)} placeholder="Ton pseudo in-game" onKeyDown={e=>e.key==='Enter'&&p.trim()&&onLogin(p.trim())}/>
+      {dp&&<div className="skin-preview" style={{justifyContent:'center',marginTop:'.5rem'}}><img src={MH(dp)} alt=""/><span>{dp}</span></div>}</div>
+    <button className="btn-send" onClick={()=>p.trim()&&onLogin(p.trim())} disabled={!p.trim()}>Se connecter</button>
+  </div></div>);
+}
+
 // ---- Offer Detail Modal ----
-function DetailModal({offer,close,isAdmin,shiningMembers,pw}){
+function DetailModal({offer,close,isAdmin,shiningMembers,pw,myPseudo}){
   const allItems=useItems();
   const[responses,setResponses]=useState([]);const[loadingR,setLoadingR]=useState(true);
-  const[pseudo,setPseudo]=useState('');const[discord,setDiscord]=useState('');const[msg,setMsg]=useState('');
+  const[pseudo,setPseudo]=useState(myPseudo||'');const[discord,setDiscord]=useState('');const[msg,setMsg]=useState('');
   const[sending,setSending]=useState(false);const[sent,setSent]=useState(false);
-  const[dp,setDp]=useState('');
+  const[dp,setDp]=useState(myPseudo||'');
   const[deleting,setDeleting]=useState(false);
+  const isMyOffer=myPseudo&&(offer.author_pseudo||'').toLowerCase()===myPseudo.toLowerCase();
 
   useEffect(()=>{const t=setTimeout(()=>setDp(pseudo.trim()),500);return()=>clearTimeout(t)},[pseudo]);
 
@@ -343,10 +377,10 @@ function DetailModal({offer,close,isAdmin,shiningMembers,pw}){
       <div className="fld"><label>Message</label><textarea value={msg} onChange={e=>setMsg(e.target.value)} placeholder="Optionnel"/></div>
       <button className="btn-send" onClick={submit} disabled={!pseudo.trim()||sending}>{sending?'Envoi…':'Je suis intéressé'}</button>
       {/* Author can delete their own offer */}
-      {pseudo.trim()&&pseudo.trim().toLowerCase()===offer.author_pseudo?.toLowerCase()&&(
+      {(isMyOffer||(pseudo.trim()&&pseudo.trim().toLowerCase()===offer.author_pseudo?.toLowerCase()))&&(
         <button style={{width:'100%',padding:'.5rem',background:'transparent',border:'1px solid rgba(239,68,68,.3)',color:'var(--red)',borderRadius:'8px',fontFamily:'Outfit,sans-serif',fontWeight:600,fontSize:'.78rem',cursor:'pointer',marginTop:'.4rem'}}
           onClick={async()=>{if(!confirm('Supprimer ton offre ?'))return;setDeleting(true);
-            await fetch(`/api/offers?id=${offer.id}&author_pseudo=${encodeURIComponent(pseudo.trim())}`,{method:'DELETE'});
+            await fetch(`/api/offers?id=${offer.id}&author_pseudo=${encodeURIComponent(myPseudo||pseudo.trim())}`,{method:'DELETE'});
             close()}} disabled={deleting}>{deleting?'Suppression…':'🗑 Supprimer mon offre'}</button>
       )}
     </>}
@@ -370,8 +404,8 @@ function DetailModal({offer,close,isAdmin,shiningMembers,pw}){
 }
 
 // ---- Create Offer Modal ----
-function OfferForm({close,save,isAdmin,offer}){
-  const[pseudo,setPseudo]=useState(offer?.author_pseudo||'');
+function OfferForm({close,save,isAdmin,offer,myPseudo}){
+  const[pseudo,setPseudo]=useState(offer?.author_pseudo||myPseudo||'');
   const[type,setType]=useState(offer?.type||'vente');
   const[itemId,setItemId]=useState(offer?.title||'');
   const[qty,setQty]=useState(offer?.quantity||'');
@@ -423,8 +457,8 @@ function OfferForm({close,save,isAdmin,offer}){
 }
 
 // ---- Service Booking Modal ----
-function SvcModal({svc,close}){
-  const[p,setP]=useState('');const[d,setD]=useState('');const[sending,setSending]=useState(false);const[sent,setSent]=useState(false);const[dp,setDp]=useState('');
+function SvcModal({svc,close,myPseudo}){
+  const[p,setP]=useState(myPseudo||'');const[d,setD]=useState('');const[sending,setSending]=useState(false);const[sent,setSent]=useState(false);const[dp,setDp]=useState(myPseudo||'');
   useEffect(()=>{const t=setTimeout(()=>setDp(p.trim()),500);return()=>clearTimeout(t)},[p]);
   const go=async()=>{if(!p.trim())return;setSending(true);
     try{await fetch('/api/respond',{method:'POST',headers:{'Content-Type':'application/json'},
