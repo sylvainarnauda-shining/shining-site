@@ -250,7 +250,7 @@ export default function Home(){
       </div>
     </section>}
 
-    <footer className="footer">Shining — shining-mc.fr — Serveur Arkunir</footer>
+    <footer className="footer">Shining — shining-mc.fr — Serveur Arkunir<br/><span style={{fontSize:'.65rem',opacity:.5}}>Made with 💙 heart</span></footer>
 
     {/* MODALS */}
     {showLogin&&<LoginModal close={()=>setShowLogin(false)} pw={pw} setPw={setPw} login={login} err={aErr}/>}
@@ -399,6 +399,7 @@ function OfferForm({close,save,isAdmin,offer}){
     <ItemPicker value={pi} onChange={setPi} label="Item en paiement"/>
     <div className="fld"><label>Quantité demandée</label><input type="number" min="1" value={pq} onChange={e=>setPq(e.target.value.replace(/\D/g,''))} placeholder="32"/></div>
 
+    <p style={{fontSize:'.72rem',color:'var(--t3)',textAlign:'center',margin:'.5rem 0',lineHeight:1.4}}>⏰ Les offres sont automatiquement supprimées après 4 heures.</p>
     <button className="btn-send" onClick={go} disabled={!itemId||!pseudo.trim()||saving}>{saving?'Publication…':'Publier l\'offre'}</button>
   </div></div>);
 }

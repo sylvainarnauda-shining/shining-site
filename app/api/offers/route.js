@@ -4,6 +4,15 @@ import bcrypt from 'bcryptjs';
 
 export async function GET() {
   const admin = getAdminClient();
+
+  // Auto-cleanup: close offers older than 4 hours
+  const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+  await admin
+    .from('offers')
+    .update({ status: 'closed' })
+    .eq('status', 'active')
+    .lt('created_at', fourHoursAgo);
+
   const { data, error } = await admin
     .from('offers')
     .select('*')
