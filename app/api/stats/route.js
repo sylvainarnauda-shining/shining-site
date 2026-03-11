@@ -24,7 +24,7 @@ export async function GET() {
   });
 
   // Compute stats
-  const itemCounts = {}; // {itemId: {sells: n, buys: n, totalQty: n, prices: [...]}}
+  const itemCounts = {}; // {itemId: {sells: n, buys: n, totalQty: n, pricesByCurrency: {currencyId: [pricePerUnit]}}}
   const traderCounts = {}; // {pseudo: {sells: n, buys: n, responses: n}}
 
   (offers || []).forEach(o => {
@@ -32,7 +32,7 @@ export async function GET() {
     const author = o.author_pseudo || 'Anonyme';
     const qty = parseInt(o.quantity) || 1;
 
-    if (!itemCounts[itemId]) itemCounts[itemId] = { sells: 0, buys: 0, totalQty: 0, prices: [] };
+    if (!itemCounts[itemId]) itemCounts[itemId] = { sells: 0, buys: 0, totalQty: 0, pricesByCurrency: {} };
     if (!traderCounts[author]) traderCounts[author] = { sells: 0, buys: 0, responses: 0 };
 
     if (o.type === 'vente') {
@@ -44,13 +44,14 @@ export async function GET() {
     }
     itemCounts[itemId].totalQty += qty;
 
-    // Parse price for average (handles old {item,qty} and new [{item,qty},...])
+    // Parse price - track per currency (handles old {item,qty} and new [{item,qty},...])
     try {
       const p = JSON.parse(o.price);
       const priceArr = Array.isArray(p) ? p : (p.item ? [p] : []);
       priceArr.forEach(pr => {
-        if (pr.item === 'diamond' && pr.qty) {
-          itemCounts[itemId].prices.push(parseFloat(pr.qty) / qty);
+        if (pr.item && pr.qty) {
+          if (!itemCounts[itemId].pricesByCurrency[pr.item]) itemCounts[itemId].pricesByCurrency[pr.item] = [];
+          itemCounts[itemId].pricesByCurrency[pr.item].push(parseFloat(pr.qty) / qty);
         }
       });
     } catch {}
@@ -65,16 +66,24 @@ export async function GET() {
 
   // Most traded items (by total offers)
   const topItems = Object.entries(itemCounts)
-    .map(([id, d]) => ({
-      id,
-      total: d.sells + d.buys,
-      sells: d.sells,
-      buys: d.buys,
-      totalQty: d.totalQty,
-      avgPriceDiamonds: d.prices.length >= 2
-        ? Math.round(d.prices.reduce((a, b) => a + b, 0) / d.prices.length * 100) / 100
-        : null,
-    }))
+    .map(([id, d]) => {
+      // Find the currency with most price data points
+      let bestCurrency = null, bestPrices = [];
+      Object.entries(d.pricesByCurrency).forEach(([currency, prices]) => {
+        if (prices.length > bestPrices.length) { bestCurrency = currency; bestPrices = prices; }
+      });
+      return {
+        id,
+        total: d.sells + d.buys,
+        sells: d.sells,
+        buys: d.buys,
+        totalQty: d.totalQty,
+        avgPrice: bestPrices.length >= 2
+          ? Math.round(bestPrices.reduce((a, b) => a + b, 0) / bestPrices.length * 100) / 100
+          : null,
+        avgPriceCurrency: bestPrices.length >= 2 ? bestCurrency : null,
+      };
+    })
     .sort((a, b) => b.total - a.total)
     .slice(0, 10);
 

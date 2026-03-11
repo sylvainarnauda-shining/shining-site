@@ -6,7 +6,26 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth;font-size:112.5%}
-body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;-webkit-font-smoothing:antialiased}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;-webkit-font-smoothing:antialiased;position:relative}
+.bg-ambient{position:fixed;inset:0;z-index:-1;overflow:hidden;background:linear-gradient(180deg,#0a0818 0%,#06050d 30%,#08061a 60%,#040310 100%)}
+.bg-ambient::before{content:'';position:absolute;inset:0;background:
+  radial-gradient(ellipse 80% 40% at 20% 10%,rgba(109,40,217,.08),transparent 60%),
+  radial-gradient(ellipse 60% 30% at 70% 20%,rgba(90,50,180,.06),transparent 50%),
+  radial-gradient(ellipse 40% 50% at 50% 80%,rgba(40,20,100,.05),transparent 60%);animation:ambientShift 20s ease-in-out infinite alternate}
+.bg-ambient::after{content:'';position:absolute;inset:0;background-image:
+  radial-gradient(1px 1px at 10% 15%,rgba(139,92,246,.3),transparent),
+  radial-gradient(1px 1px at 30% 25%,rgba(167,139,250,.2),transparent),
+  radial-gradient(1px 1px at 50% 10%,rgba(196,181,253,.25),transparent),
+  radial-gradient(1px 1px at 70% 35%,rgba(139,92,246,.2),transparent),
+  radial-gradient(1px 1px at 90% 20%,rgba(167,139,250,.3),transparent),
+  radial-gradient(1px 1px at 15% 45%,rgba(139,92,246,.15),transparent),
+  radial-gradient(1px 1px at 60% 55%,rgba(196,181,253,.15),transparent),
+  radial-gradient(1.5px 1.5px at 80% 60%,rgba(226,184,87,.15),transparent),
+  radial-gradient(1px 1px at 40% 70%,rgba(139,92,246,.1),transparent),
+  radial-gradient(1.5px 1.5px at 25% 80%,rgba(226,184,87,.1),transparent);animation:particleFloat 15s ease-in-out infinite alternate}
+@keyframes ambientShift{0%{opacity:.8}50%{opacity:1}100%{opacity:.9}}
+@keyframes particleFloat{0%{transform:translateY(0)}100%{transform:translateY(-8px)}}
+.bg-blur-overlay{position:fixed;inset:0;z-index:-1;backdrop-filter:blur(calc(var(--scroll-blur,0) * 1px));-webkit-backdrop-filter:blur(calc(var(--scroll-blur,0) * 1px));background:rgba(6,5,13,calc(var(--scroll-blur,0) * 0.03));transition:backdrop-filter .3s,background .3s;pointer-events:none}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--p7);border-radius:2px}
 
 /* NAV */

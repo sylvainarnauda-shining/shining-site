@@ -170,7 +170,23 @@ export default function Home(){
     try{const r=await fetch('/api/offers',{method,headers,body:JSON.stringify(data)});if(r.ok){setNewOfferModal(false);load()}}catch(e){console.error(e)}
   };
 
+  // Scroll-based blur effect
+  useEffect(()=>{
+    const handleScroll=()=>{
+      const scrollY=window.scrollY;
+      const maxBlur=12;
+      const blurAmount=Math.min(scrollY/150,maxBlur);
+      document.documentElement.style.setProperty('--scroll-blur',String(blurAmount));
+    };
+    window.addEventListener('scroll',handleScroll,{passive:true});
+    return()=>window.removeEventListener('scroll',handleScroll);
+  },[]);
+
   return(<>
+    {/* AMBIENT BACKGROUND */}
+    <div className="bg-ambient"/>
+    <div className="bg-blur-overlay"/>
+
     {/* NAV */}
     <nav className="nav">
       <a href="#" className="nav-brand"><div className="nav-logo">S</div><span className="nav-name">SHINING</span></a>
@@ -267,10 +283,10 @@ export default function Home(){
                 <strong>{item?item.name:it.id}</strong>
                 <span>{it.sells} vente{it.sells>1?'s':''} · {it.buys} achat{it.buys>1?'s':''}</span>
               </div>
-              {it.avgPriceDiamonds!==null&&<div className="stats-price">
-                <img src={DIAMOND_ICON} alt="" style={{width:14,height:14,imageRendering:'pixelated'}}/>
-                <span>~{it.avgPriceDiamonds}</span>
-              </div>}
+              {it.avgPrice!==null&&(()=>{const ci=gi(it.avgPriceCurrency);return <div className="stats-price">
+                {ci&&<img src={ci.icon} alt="" style={{width:14,height:14,imageRendering:'pixelated'}} onError={e=>e.target.style.opacity='0'}/>}
+                <span>~{it.avgPrice}</span>
+              </div>})()}
             </div>
           )})}
         </div>
