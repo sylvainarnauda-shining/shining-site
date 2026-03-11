@@ -183,8 +183,8 @@ export default function Home(){
   },[]);
 
   return(<>
-    {/* AMBIENT BACKGROUND */}
-    <div className="bg-ambient"/>
+    {/* AMBIENT BACKGROUND - MC cave image */}
+    <div className="bg-ambient"><div className="bg-img"/><div className="bg-overlay"/></div>
     <div className="bg-blur-overlay"/>
 
     {/* NAV */}
