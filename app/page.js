@@ -115,6 +115,27 @@ export default function Home(){
   },[]);
   useEffect(()=>{load()},[load]);
 
+  // URL-based offer deep link: ?offre=ID
+  useEffect(()=>{
+    if(!offers.length)return;
+    const params=new URLSearchParams(window.location.search);
+    const offreId=params.get('offre');
+    if(offreId&&!detailModal){
+      const found=offers.find(o=>o.id===offreId);
+      if(found)setDetailModal(found);
+    }
+  },[offers]);
+
+  const openDetail=(o)=>{
+    setDetailModal(o);
+    window.history.replaceState(null,'',`?offre=${o.id}`);
+  };
+  const closeDetail=()=>{
+    setDetailModal(null);
+    window.history.replaceState(null,'',window.location.pathname);
+    load();
+  };
+
   // Realtime
   useEffect(()=>{
     let sub;
@@ -204,7 +225,7 @@ export default function Home(){
           const it=gi(o.title);const priceList=parsePrices(o.price);
           let descText='',enchList=[];try{const d=JSON.parse(o.description);descText=d.text||'';enchList=d.enchants||[]}catch{descText=o.description||''}
           const isSh=isShining(o.author_pseudo);
-          return(<div key={o.id} className={`card ${isSh?'shining':''}`} onClick={()=>setDetailModal(o)}>
+          return(<div key={o.id} className={`card ${isSh?'shining':''}`} onClick={()=>openDetail(o)}>
             <div className="card-header">
               <div className={`badge badge-${o.type}`}>{o.type==='achat'?'Achat':o.type==='vente'?'Vente':'Mission'}</div>
               {o.author_pseudo&&<div className="card-author">
@@ -347,7 +368,7 @@ export default function Home(){
     {showLogin&&<LoginModal close={()=>setShowLogin(false)} pw={pw} setPw={setPw} login={login} err={aErr}/>}
     {showUserLogin&&<UserLoginModal close={()=>setShowUserLogin(false)} onLogin={(p)=>{setMyPseudo(p);setShowUserLogin(false)}} shiningMembers={shiningMembers}/>}
     {newOfferModal&&<OfferForm close={()=>{setNewOfferModal(false);load()}} save={saveOffer} isAdmin={isA} myPseudo={myPseudo} shiningMembers={shiningMembers}/>}
-    {detailModal&&<DetailModal offer={detailModal} close={()=>{setDetailModal(null);load()}} isAdmin={isA} shiningMembers={shiningMembers} pw={pw} myPseudo={myPseudo}/>}
+    {detailModal&&<DetailModal offer={detailModal} close={closeDetail} isAdmin={isA} shiningMembers={shiningMembers} pw={pw} myPseudo={myPseudo}/>}
     {svcModal&&<SvcModal svc={svcModal} close={()=>setSvcModal(null)} myPseudo={myPseudo}/>}
   </>);
 }
@@ -414,7 +435,9 @@ function DetailModal({offer,close,isAdmin,shiningMembers,pw,myPseudo}){
   const[sending,setSending]=useState(false);const[sent,setSent]=useState(false);
   const[dp,setDp]=useState(myPseudo||'');
   const[deleting,setDeleting]=useState(false);
+  const[copied,setCopied]=useState(false);
   const isMyOffer=myPseudo&&(offer.author_pseudo||'').toLowerCase()===myPseudo.toLowerCase();
+  const shareUrl=typeof window!=='undefined'?`${window.location.origin}?offre=${offer.id}`:'';
 
   useEffect(()=>{const t=setTimeout(()=>setDp(pseudo.trim()),500);return()=>clearTimeout(t)},[pseudo]);
 
@@ -438,7 +461,13 @@ function DetailModal({offer,close,isAdmin,shiningMembers,pw,myPseudo}){
   };
 
   return(<div className="overlay" onClick={close}><div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:480}}>
-    <button className="modal-x" onClick={close}>×</button>
+    <div style={{display:'flex',justifyContent:'flex-end',gap:'.3rem',marginBottom:'.2rem'}}>
+      <button onClick={()=>{navigator.clipboard.writeText(shareUrl);setCopied(true);setTimeout(()=>setCopied(false),2000)}}
+        style={{background:'none',border:'1px solid var(--border)',borderRadius:'6px',color:copied?'var(--green)':'var(--t3)',padding:'.2rem .5rem',fontSize:'.68rem',fontFamily:'Outfit,sans-serif',cursor:'pointer'}}>
+        {copied?'✅ Copié !':'🔗 Partager'}
+      </button>
+      <button className="modal-x" onClick={close} style={{position:'static'}}>×</button>
+    </div>
 
     {/* Offer info */}
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'.3rem'}}>

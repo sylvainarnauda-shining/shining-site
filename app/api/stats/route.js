@@ -71,7 +71,7 @@ export async function GET() {
       sells: d.sells,
       buys: d.buys,
       totalQty: d.totalQty,
-      avgPriceDiamonds: d.prices.length > 0
+      avgPriceDiamonds: d.prices.length >= 2
         ? Math.round(d.prices.reduce((a, b) => a + b, 0) / d.prices.length * 100) / 100
         : null,
     }))
