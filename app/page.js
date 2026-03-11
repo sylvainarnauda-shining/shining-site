@@ -38,6 +38,108 @@ const DIAMOND_ICON = 'https://minecraft.wiki/images/Invicon_Diamond.png';
 const MAP_ICON = 'https://minecraft.wiki/images/Invicon_Map.png';
 const OBSIDIAN_ICON = 'https://minecraft.wiki/images/Invicon_Obsidian.png';
 
+// Enchantments
+let _enchCache = [];
+let _enchLoading = false;
+let _enchListeners = [];
+
+function loadEnchants() {
+  if (_enchCache.length > 0 || _enchLoading) return;
+  _enchLoading = true;
+  fetch('/api/enchants').then(r => r.json()).then(data => {
+    if (Array.isArray(data)) { _enchCache = data; _enchListeners.forEach(fn => fn(data)); }
+    _enchLoading = false;
+  }).catch(() => { _enchLoading = false; });
+}
+
+function useEnchants() {
+  const [e, setE] = useState(_enchCache);
+  useEffect(() => {
+    if (_enchCache.length > 0) { setE(_enchCache); return; }
+    _enchListeners.push(setE);
+    loadEnchants();
+    return () => { _enchListeners = _enchListeners.filter(fn => fn !== setE); };
+  }, []);
+  return e;
+}
+
+// Items that can be enchanted
+const ENCHANTABLE = /sword|pickaxe|axe|shovel|hoe|bow|crossbow|trident|helmet|chestplate|leggings|boots|elytra|shield|fishing_rod|shears|mace|enchanted_book|book/;
+
+function toRoman(n) { return ['','I','II','III','IV','V','VI','VII','VIII','IX','X'][n] || n; }
+
+function EnchantPicker({ enchants, onChange }) {
+  const allEnch = useEnchants();
+  const [showAdd, setShowAdd] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setShowAdd(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const filtered = allEnch.filter(e =>
+    !enchants.find(x => x.id === e.id) &&
+    (e.name.toLowerCase().includes(search.toLowerCase()) || e.category.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  const addEnch = (ench) => {
+    onChange([...enchants, { id: ench.id, name: ench.name, level: ench.maxLevel, maxLevel: ench.maxLevel }]);
+    setShowAdd(false);
+    setSearch('');
+  };
+
+  const removeEnch = (id) => onChange(enchants.filter(e => e.id !== id));
+
+  const setLevel = (id, level) => onChange(enchants.map(e => e.id === id ? { ...e, level } : e));
+
+  return (
+    <div className="fld" ref={ref}>
+      <label>Enchantements (optionnel)</label>
+      {enchants.length > 0 && (
+        <div className="ench-list">
+          {enchants.map(e => (
+            <div key={e.id} className="ench-tag">
+              <span className="ench-name">{e.name}</span>
+              <select className="ench-lvl" value={e.level} onChange={ev => setLevel(e.id, parseInt(ev.target.value))}>
+                {Array.from({ length: e.maxLevel }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>{toRoman(i + 1)}</option>
+                ))}
+              </select>
+              <button className="ench-rm" onClick={() => removeEnch(e.id)} type="button">×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <button className="ench-add-btn" onClick={() => setShowAdd(!showAdd)} type="button">
+        + Ajouter un enchantement
+      </button>
+      {showAdd && (
+        <div className="ench-dropdown">
+          <input className="item-search" placeholder="Rechercher enchantement..." value={search}
+            onChange={e => setSearch(e.target.value)} autoFocus />
+          <div className="item-list">
+            {filtered.map(e => (
+              <div key={e.id} className="item-opt" onClick={() => addEnch(e)}>
+                <span>✨ {e.name} (max {toRoman(e.maxLevel)})</span>
+                <span className="ench-cat-tag">{e.category}</span>
+              </div>
+            ))}
+            {filtered.length === 0 && <div className="item-nil">Aucun enchantement</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatEnchants(enchants) {
+  if (!enchants || enchants.length === 0) return '';
+  return enchants.map(e => `${e.name} ${toRoman(e.level)}`).join(', ');
+}
+
 
 function ItemPicker({value,onChange,label}){
   const items=useItems();
@@ -179,13 +281,15 @@ export default function Home(){
       <div className="grid">
         {fil.length===0?<div className="empty"><span>📭</span>Aucune offre active.</div>:
         fil.map(o=>{const it=gi(o.title);let pi=null,pq='';try{const p=JSON.parse(o.price);pi=gi(p.item);pq=p.qty}catch{}
+          let descText='',enchList=[];try{const d=JSON.parse(o.description);descText=d.text||'';enchList=d.enchants||[]}catch{descText=o.description||''}
           return(<div key={o.id} className="card">
             <div className={`badge badge-${o.type}`}>{o.type==='achat'?'Achat':o.type==='vente'?'Vente':'Emploi'}</div>
             <div className="offer-row">
               {it&&<img src={it.icon} alt="" onError={e=>e.target.style.opacity='0'}/>}
               <div><h3>{it?it.name:o.title}</h3>{o.quantity&&<span className="offer-qty">×{o.quantity}</span>}</div>
             </div>
-            {o.description&&<p>{o.description}</p>}
+            {enchList.length>0&&<div className="ench-display">{enchList.map(e=><span key={e.id} className="ench-pill">✨ {e.name} {toRoman(e.level)}</span>)}</div>}
+            {descText&&<p>{descText}</p>}
             {pi&&<div className="price-bar"><span className="price-label">{o.type==='achat'?'Budget':'Prix'}</span>
               <div className="price-val"><img src={pi.icon} alt="" onError={e=>e.target.style.opacity='0'}/><span>{pq}× {pi.name}</span></div></div>}
             <button className="btn-interest" onClick={()=>setRModal(o)}>Je suis intéressé</button>
@@ -236,15 +340,23 @@ function RModal({o,close}){
 
 function OForm({o,close,save}){
   const[type,setType]=useState(o?.type||'vente');const[itemId,setItemId]=useState(o?.title||'');const[qty,setQty]=useState(o?.quantity||'');
-  const[desc,setDesc]=useState(o?.description||'');const[pi,setPi]=useState('');const[pq,setPq]=useState('');const[saving,setSaving]=useState(false);
-  useEffect(()=>{if(o?.price){try{const p=JSON.parse(o.price);setPi(p.item||'');setPq(p.qty||'')}catch{}}},[o]);
-  const go=async()=>{if(!itemId)return;setSaving(true);await save({type,title:itemId,description:desc.trim(),quantity:qty,price:pi?JSON.stringify({item:pi,qty:pq}):''});setSaving(false)};
+  const[desc,setDesc]=useState('');const[enchants,setEnchants]=useState([]);
+  const[pi,setPi]=useState('');const[pq,setPq]=useState('');const[saving,setSaving]=useState(false);
+  useEffect(()=>{
+    if(o?.price){try{const p=JSON.parse(o.price);setPi(p.item||'');setPq(p.qty||'')}catch{}}
+    if(o?.description){try{const d=JSON.parse(o.description);setDesc(d.text||'');setEnchants(d.enchants||[])}catch{setDesc(o.description)}}
+  },[o]);
+  const go=async()=>{if(!itemId)return;setSaving(true);
+    const descJson=JSON.stringify({text:desc.trim(),enchants});
+    await save({type,title:itemId,description:descJson,quantity:qty,price:pi?JSON.stringify({item:pi,qty:pq}):''});setSaving(false)};
+  const showEnch=itemId&&ENCHANTABLE.test(itemId);
   return(<div className="overlay" onClick={close}><div className="modal" onClick={e=>e.stopPropagation()}>
     <button className="modal-x" onClick={close}>×</button><h2>{o?'Modifier':'Nouvelle offre'}</h2>
     <div className="fld"><label>Type</label><select value={type} onChange={e=>setType(e.target.value)}><option value="vente">Vente</option><option value="achat">Achat</option><option value="emploi">Emploi</option></select></div>
-    <ItemPicker value={itemId} onChange={setItemId} label={type==='achat'?'Item recherché':'Item à vendre'}/>
+    <ItemPicker value={itemId} onChange={v=>{setItemId(v);if(!ENCHANTABLE.test(v))setEnchants([])}} label={type==='achat'?'Item recherché':'Item à vendre'}/>
     <div className="fld"><label>Quantité</label><input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value.replace(/\D/g,''))} placeholder="64"/></div>
-    <div className="fld"><label>Description (optionnel)</label><textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Enchanté Efficiency V..."/></div>
+    {showEnch&&<EnchantPicker enchants={enchants} onChange={setEnchants}/>}
+    <div className="fld"><label>Notes (optionnel)</label><textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Infos supplémentaires..."/></div>
     <div className="sep"><span>{type==='achat'?'En échange de':'Prix demandé'}</span></div>
     <ItemPicker value={pi} onChange={setPi} label="Item en paiement"/>
     <div className="fld"><label>Quantité demandée</label><input type="number" min="1" value={pq} onChange={e=>setPq(e.target.value.replace(/\D/g,''))} placeholder="32"/></div>
