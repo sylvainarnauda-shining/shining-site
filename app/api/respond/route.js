@@ -1,8 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '../../../lib/supabase';
 import { sendDiscordNotification } from '../../../lib/discord';
+import { rateLimit } from '../../../lib/rate-limit';
+
+// 5 réponses max par minute par IP
+const checkLimit = rateLimit({ maxRequests: 5, windowMs: 60000 });
 
 export async function POST(request) {
+  // Rate limiting
+  const limit = checkLimit(request);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: `Trop de requêtes. Réessaie dans ${limit.retryAfter}s.` },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
+    );
+  }
+
   const body = await request.json();
 
   if (!body.offer_id || !body.minecraft_pseudo) {
