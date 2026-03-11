@@ -74,16 +74,18 @@ export default function Home(){
   const[pw,setPw]=useState('');const[isA,setIsA]=useState(false);const[aErr,setAErr]=useState('');
   const[showAdmin,setShowAdmin]=useState(false);const[showLogin,setShowLogin]=useState(false);
   const[settings,setSettings]=useState({farm_xp_open:'false',farm_xp_price:'15',visit_price:'2',visit_open:'true',shining_members:'[]'});
+  const[stats,setStats]=useState(null);
 
   const shiningMembers=(() => {try{return JSON.parse(settings.shining_members)}catch{return[]}})();
   const isShining=(pseudo)=>shiningMembers.map(m=>m.toLowerCase()).includes((pseudo||'').toLowerCase());
 
   const load=useCallback(async()=>{
     try{
-      const[r1,r2]=await Promise.all([fetch('/api/offers'),fetch('/api/settings')]);
-      const[d1,d2]=await Promise.all([r1.json(),r2.json()]);
+      const[r1,r2,r3]=await Promise.all([fetch('/api/offers'),fetch('/api/settings'),fetch('/api/stats')]);
+      const[d1,d2,d3]=await Promise.all([r1.json(),r2.json(),r3.json()]);
       if(Array.isArray(d1))setOffers(d1);
       if(Array.isArray(d2)){const s={};d2.forEach(x=>{s[x.key]=x.value});setSettings(prev=>({...prev,...s}))}
+      if(d3&&!d3.error)setStats(d3);
     }catch(e){console.error(e)}finally{setLoading(false)}
   },[]);
   useEffect(()=>{load()},[load]);
@@ -149,9 +151,9 @@ export default function Home(){
 
     {/* HERO */}
     <section className="hero">
-      <div className="hero-badge"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.display='none'}/>Team Minecraft — Arkunir</div>
+      <div className="hero-badge"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.display='none'}/>Serveur Arkunir</div>
       <h1 className="hero-title">SHINING</h1>
-      <p className="hero-sub">Marketplace de la Shining. Achat, vente, mission et services entre joueurs.</p>
+      <p className="hero-sub">La marketplace du serveur Arkunir, propulsée par la Shining. Échangez, vendez, achetez entre joueurs.</p>
       <div className="hero-cta">
         <a href="#market" className="btn-main">Explorer la marketplace</a>
         <a href="#services" className="btn-ghost">Nos services</a>
@@ -175,7 +177,9 @@ export default function Home(){
         </div>
         <div className="svc">
           <img className="svc-icon" src={MAP_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>
-          <div className="svc-body"><h3>Visite de la team</h3><p>Visite guidée — par personne</p></div>
+          <div className="svc-body"><h3>Visite de la team</h3><p>Visite guidée — par personne</p>
+            <p style={{fontSize:'.68rem',color:'var(--p4)',marginTop:'.2rem'}}>📍 Portail Nether : X 338 · Y 60 · Z -21</p>
+          </div>
           <div className="svc-right">
             <div className="svc-price"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.opacity='0'}/>{visitPrice}</div>
             <span className={`status ${visitOpen?'status-open':'status-closed'}`}>{visitOpen?'Ouvert':'Fermé'}</span>
@@ -184,16 +188,51 @@ export default function Home(){
           </div>
         </div>
       </div>
-      <div className="coords-card">
-        <img src={OBSIDIAN_ICON} alt="" className="coords-icon" onError={e=>e.target.style.opacity='0'}/>
-        <div className="coords-body"><h3>Portail du Nether — Entrée de la base</h3><p>Point de rendez-vous pour échanges et visites</p></div>
-        <div className="coords-values">
-          <span className="coord"><span className="coord-label">X</span>338</span>
-          <span className="coord"><span className="coord-label">Y</span>60</span>
-          <span className="coord"><span className="coord-label">Z</span>-21</span>
-        </div>
-      </div>
     </section>
+
+    {/* TENDANCES */}
+    {stats&&(stats.topItems.length>0||stats.topTraders.length>0)&&<section className="section" id="trends">
+      <div className="section-label">Tendances</div>
+      <h2 className="section-heading">Activité du marché</h2>
+      <div className="stats-overview">
+        <div className="stat-card"><span className="stat-num">{stats.totalOffers}</span><span className="stat-label">Offres totales</span></div>
+        <div className="stat-card"><span className="stat-num">{stats.activeOffers}</span><span className="stat-label">Actives</span></div>
+        <div className="stat-card"><span className="stat-num">{stats.totalResponses}</span><span className="stat-label">Candidatures</span></div>
+      </div>
+      {stats.topItems.length>0&&<>
+        <h3 className="stats-sub">📈 Items les plus échangés</h3>
+        <div className="stats-items">
+          {stats.topItems.map((it,i)=>{const item=gi(it.id);return(
+            <div key={it.id} className="stats-item-row">
+              <span className="stats-rank">#{i+1}</span>
+              {item&&<img src={item.icon} alt="" style={{width:22,height:22,imageRendering:'pixelated'}} onError={e=>e.target.style.opacity='0'}/>}
+              <div className="stats-item-info">
+                <strong>{item?item.name:it.id}</strong>
+                <span>{it.sells} vente{it.sells>1?'s':''} · {it.buys} achat{it.buys>1?'s':''}</span>
+              </div>
+              {it.avgPriceDiamonds!==null&&<div className="stats-price">
+                <img src={DIAMOND_ICON} alt="" style={{width:14,height:14,imageRendering:'pixelated'}}/>
+                <span>~{it.avgPriceDiamonds}</span>
+              </div>}
+            </div>
+          )})}
+        </div>
+      </>}
+      {stats.topTraders.length>0&&<>
+        <h3 className="stats-sub">🏆 Joueurs les plus actifs</h3>
+        <div className="stats-traders">
+          {stats.topTraders.map((t,i)=>(
+            <div key={t.pseudo} className="stats-trader">
+              <img src={MH(t.pseudo)} alt="" style={{width:24,height:24,borderRadius:3,imageRendering:'pixelated'}} onError={e=>e.target.style.opacity='0'}/>
+              <div className="stats-trader-info">
+                <strong>{t.pseudo}</strong>
+                <span>{t.sells}V · {t.buys}A · {t.responses}R</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </>}
+    </section>}
 
     {/* MARKETPLACE */}
     <section className="section" id="market">
@@ -277,7 +316,7 @@ export default function Home(){
       </div>
     </section>}
 
-    <footer className="footer">Shining — shining-mc.fr — Serveur Arkunir<br/><span style={{fontSize:'.65rem',opacity:.5}}>Made with 💙 heart</span></footer>
+    <footer className="footer">Shining — shining-mc.fr — Serveur Arkunir<br/><span style={{fontSize:'.65rem',opacity:.5}}>Propulsé par la Shining · Made with 💙 heart</span></footer>
 
     {/* MODALS */}
     {showLogin&&<LoginModal close={()=>setShowLogin(false)} pw={pw} setPw={setPw} login={login} err={aErr}/>}

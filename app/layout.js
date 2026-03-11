@@ -2,7 +2,7 @@ import './globals.css';
 
 export const metadata = {
   title: 'SHINING — Marketplace MC',
-  description: 'Marketplace de la Shining sur le serveur Arkunir. Achat, vente, mission, services.',
+  description: 'La marketplace du serveur Arkunir, propulsée par la Shining. Achat, vente, mission, services entre joueurs.',
 };
 
 export default function RootLayout({ children }) {
