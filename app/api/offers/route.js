@@ -15,11 +15,18 @@ export async function GET() {
 
   const { data, error } = await admin
     .from('offers')
-    .select('*')
+    .select('*, responses(count)')
     .eq('status', 'active')
     .order('created_at', { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  // Flatten response count
+  const enriched = (data || []).map(o => ({
+    ...o,
+    response_count: o.responses?.[0]?.count || 0,
+    responses: undefined,
+  }));
+  return NextResponse.json(enriched);
 }
 
 function verifyAdmin(request) {

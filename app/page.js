@@ -212,6 +212,7 @@ export default function Home(){
             {descText&&<p>{descText}</p>}
             {pi&&<div className="price-bar"><span className="price-label">{o.type==='achat'?'Budget':'Prix'}</span>
               <div className="price-val"><img src={pi.icon} alt="" onError={e=>e.target.style.opacity='0'}/><span>{pq}× {pi.name}</span></div></div>}
+            {o.response_count>0&&<p style={{fontSize:'.72rem',color:'var(--p4)',marginTop:'.3rem'}}>📩 {o.response_count} candidature{o.response_count>1?'s':''}</p>}
           </div>)
         })}
       </div>}
