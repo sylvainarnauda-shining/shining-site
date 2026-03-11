@@ -213,7 +213,7 @@ export default function Home(){
 
     {/* HERO */}
     <section className="hero">
-      <div className="hero-badge"><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.display='none'}/>Serveur Arkunir</div>
+      <a href="https://x.com/Arkunir" target="_blank" rel="noopener" className="hero-badge" style={{textDecoration:'none'}}><img src={DIAMOND_ICON} alt="" onError={e=>e.target.style.display='none'}/>Serveur Arkunir ↗</a>
       <h1 className="hero-title">SHINING</h1>
       <p className="hero-sub">La première marketplace du serveur Arkunir, propulsée par la Shining. Échangez, vendez, achetez entre joueurs.</p>
       <div className="hero-cta">
