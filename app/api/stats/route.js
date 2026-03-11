@@ -44,12 +44,15 @@ export async function GET() {
     }
     itemCounts[itemId].totalQty += qty;
 
-    // Parse price for average
+    // Parse price for average (handles old {item,qty} and new [{item,qty},...])
     try {
       const p = JSON.parse(o.price);
-      if (p.item === 'diamond' && p.qty) {
-        itemCounts[itemId].prices.push(parseFloat(p.qty) / qty);
-      }
+      const priceArr = Array.isArray(p) ? p : (p.item ? [p] : []);
+      priceArr.forEach(pr => {
+        if (pr.item === 'diamond' && pr.qty) {
+          itemCounts[itemId].prices.push(parseFloat(pr.qty) / qty);
+        }
+      });
     } catch {}
   });
 

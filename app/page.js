@@ -20,6 +20,31 @@ const gi=(id)=>_items.find(i=>i.id===id);
 const ENCHANTABLE=/sword|pickaxe|axe|shovel|hoe|bow|crossbow|trident|helmet|chestplate|leggings|boots|elytra|shield|fishing_rod|shears|mace|enchanted_book|book/;
 function toRoman(n){return['','I','II','III','IV','V','VI','VII','VIII','IX','X'][n]||n}
 
+// Parse prices - handles old {item,qty} and new [{item,qty},...] formats
+function parsePrices(priceStr){
+  if(!priceStr)return[];
+  try{
+    const p=JSON.parse(priceStr);
+    if(Array.isArray(p))return p.map(x=>({item:gi(x.item),qty:x.qty})).filter(x=>x.item);
+    if(p.item)return[{item:gi(p.item),qty:p.qty}].filter(x=>x.item);
+  }catch{}
+  return[];
+}
+
+// Render price display component
+function PriceDisplay({prices,label}){
+  if(!prices.length)return null;
+  return(<div style={{margin:'.4rem 0'}}>
+    {prices.map((p,i)=><div key={i}>
+      {i>0&&<div style={{textAlign:'center',fontSize:'.62rem',color:'var(--p4)',fontWeight:700,margin:'.15rem 0'}}>ou</div>}
+      <div className="price-bar">
+        <span className="price-label">{i===0?label:''}</span>
+        <div className="price-val"><img src={p.item.icon} alt="" onError={e=>e.target.style.opacity='0'}/><span>{p.qty}× {p.item.name}</span></div>
+      </div>
+    </div>)}
+  </div>);
+}
+
 // ---- ItemPicker ----
 function ItemPicker({value,onChange,label}){
   const items=useItems();
@@ -176,7 +201,7 @@ export default function Home(){
       <div className="grid">
         {filtered.length===0?<div className="empty"><span>📭</span>Aucune offre active.</div>:
         filtered.map(o=>{
-          const it=gi(o.title);let pi=null,pq='';try{const p=JSON.parse(o.price);pi=gi(p.item);pq=p.qty}catch{}
+          const it=gi(o.title);const priceList=parsePrices(o.price);
           let descText='',enchList=[];try{const d=JSON.parse(o.description);descText=d.text||'';enchList=d.enchants||[]}catch{descText=o.description||''}
           const isSh=isShining(o.author_pseudo);
           return(<div key={o.id} className={`card ${isSh?'shining':''}`} onClick={()=>setDetailModal(o)}>
@@ -194,8 +219,7 @@ export default function Home(){
             </div>
             {enchList.length>0&&<div className="ench-display">{enchList.map(e=><span key={e.id} className="ench-pill">✨ {e.name} {toRoman(e.level)}</span>)}</div>}
             {descText&&<p>{descText}</p>}
-            {pi&&<div className="price-bar"><span className="price-label">{o.type==='achat'?'Budget':'Prix'}</span>
-              <div className="price-val"><img src={pi.icon} alt="" onError={e=>e.target.style.opacity='0'}/><span>{pq}× {pi.name}</span></div></div>}
+            <PriceDisplay prices={priceList} label={o.type==='achat'?'Budget':'Prix'}/>
             {o.response_count>0&&<p style={{fontSize:'.72rem',color:'var(--p4)',marginTop:'.3rem'}}>📩 {o.response_count} candidature{o.response_count>1?'s':''}</p>}
           </div>)
         })}
@@ -399,7 +423,7 @@ function DetailModal({offer,close,isAdmin,shiningMembers,pw,myPseudo}){
   },[offer.id]);
 
   const it=gi(offer.title);
-  let pi=null,pq='';try{const p=JSON.parse(offer.price);pi=gi(p.item);pq=p.qty}catch{}
+  const priceList=parsePrices(offer.price);
   let descText='',enchList=[];try{const d=JSON.parse(offer.description);descText=d.text||'';enchList=d.enchants||[]}catch{descText=offer.description||''}
   const isSh=shiningMembers.map(m=>m.toLowerCase()).includes((offer.author_pseudo||'').toLowerCase());
 
@@ -433,8 +457,7 @@ function DetailModal({offer,close,isAdmin,shiningMembers,pw,myPseudo}){
 
     {enchList.length>0&&<div className="ench-display">{enchList.map(e=><span key={e.id} className="ench-pill">✨ {e.name} {toRoman(e.level)}</span>)}</div>}
     {descText&&<p style={{marginBottom:'.5rem'}}>{descText}</p>}
-    {pi&&<div className="price-bar"><span className="price-label">{offer.type==='achat'?'Budget':'Prix'}</span>
-      <div className="price-val"><img src={pi.icon} alt="" onError={e=>e.target.style.opacity='0'}/><span>{pq}× {pi.name}</span></div></div>}
+    <PriceDisplay prices={priceList} label={offer.type==='achat'?'Budget':'Prix'}/>
 
     {/* Respond */}
     {sent?<div className="ok-msg"><span>✅</span><p>Envoyé !</p><small>Ta candidature a été transmise sur Discord.</small></div>:<>
@@ -478,21 +501,30 @@ function OfferForm({close,save,isAdmin,offer,myPseudo,shiningMembers}){
   const[itemId,setItemId]=useState(offer?.title||'');
   const[qty,setQty]=useState(offer?.quantity||'');
   const[desc,setDesc]=useState('');const[enchants,setEnchants]=useState([]);
-  const[pi,setPi]=useState('');const[pq,setPq]=useState('');
+  const[prices,setPrices]=useState([{item:'',qty:''}]);
   const[saving,setSaving]=useState(false);
   const[dp,setDp]=useState('');
 
   useEffect(()=>{const t=setTimeout(()=>setDp(pseudo.trim()),500);return()=>clearTimeout(t)},[pseudo]);
   useEffect(()=>{if(offer?.description){try{const d=JSON.parse(offer.description);setDesc(d.text||'');setEnchants(d.enchants||[])}catch{setDesc(offer.description)}}
-    if(offer?.price){try{const p=JSON.parse(offer.price);setPi(p.item||'');setPq(p.qty||'')}catch{}}},[offer]);
+    if(offer?.price){try{const p=JSON.parse(offer.price);
+      if(Array.isArray(p)){setPrices(p.length?p:[{item:'',qty:''}])}
+      else if(p.item){setPrices([p])}
+    }catch{}}},[offer]);
 
   const pseudoIsShining=pseudo.trim()&&(shiningMembers||[]).map(m=>m.toLowerCase()).includes(pseudo.trim().toLowerCase());
   const pseudoBlocked=pseudoIsShining&&(!myPseudo||myPseudo.toLowerCase()!==pseudo.trim().toLowerCase());
 
+  const updatePrice=(i,field,val)=>{const nw=[...prices];nw[i]={...nw[i],[field]:val};setPrices(nw)};
+  const addPrice=()=>setPrices([...prices,{item:'',qty:''}]);
+  const rmPrice=(i)=>setPrices(prices.filter((_,j)=>j!==i));
+  const validPrices=prices.filter(p=>p.item&&p.qty);
+
   const go=async()=>{
     if(!itemId||!pseudo.trim()||pseudoBlocked)return;setSaving(true);
     const descJson=JSON.stringify({text:desc.trim(),enchants});
-    await save({...(offer?.id?{id:offer.id}:{}),type,title:itemId,description:descJson,quantity:qty,price:pi?JSON.stringify({item:pi,qty:pq}):'',author_pseudo:pseudo.trim()});
+    const priceJson=validPrices.length?JSON.stringify(validPrices):'';
+    await save({...(offer?.id?{id:offer.id}:{}),type,title:itemId,description:descJson,quantity:qty,price:priceJson,author_pseudo:pseudo.trim()});
     setSaving(false);
   };
 
@@ -519,8 +551,16 @@ function OfferForm({close,save,isAdmin,offer,myPseudo,shiningMembers}){
 
     <div className="sep"><span>{type==='achat'?'En échange de':'Prix demandé'}</span></div>
 
-    <ItemPicker value={pi} onChange={setPi} label="Item en paiement"/>
-    <div className="fld"><label>Quantité demandée</label><input type="number" min="1" value={pq} onChange={e=>setPq(e.target.value.replace(/\D/g,''))} placeholder="32"/></div>
+    {prices.map((p,i)=><div key={i} style={{marginBottom:'.5rem'}}>
+      {i>0&&<div style={{textAlign:'center',fontSize:'.72rem',color:'var(--p4)',fontWeight:700,margin:'.3rem 0'}}>— OU —</div>}
+      <div style={{display:'flex',gap:'.4rem',alignItems:'flex-end'}}>
+        <div style={{flex:1}}><ItemPicker value={p.item} onChange={v=>updatePrice(i,'item',v)} label={i===0?'Item en paiement':''}/></div>
+        <div className="fld" style={{width:'80px',marginBottom:0}}><input type="number" min="1" value={p.qty} onChange={e=>updatePrice(i,'qty',e.target.value.replace(/\D/g,''))} placeholder="Qté"/></div>
+        {prices.length>1&&<button className="ench-rm" onClick={()=>rmPrice(i)} style={{marginBottom:'.3rem',fontSize:'1rem'}}>✕</button>}
+      </div>
+    </div>)}
+    <button style={{width:'100%',padding:'.3rem',background:'none',border:'1px dashed rgba(139,92,246,.2)',borderRadius:'6px',color:'var(--p4)',fontFamily:'Outfit,sans-serif',fontSize:'.72rem',fontWeight:600,cursor:'pointer',marginBottom:'.5rem'}}
+      onClick={addPrice}>+ Ajouter une option de paiement (ou)</button>
 
     {pseudoBlocked&&<p style={{fontSize:'.75rem',color:'var(--red)',textAlign:'center',margin:'.3rem 0'}}>🔒 Ce pseudo est un membre Shining. Connecte-toi d'abord via "Se connecter" avec ce pseudo.</p>}
     <p style={{fontSize:'.72rem',color:'var(--t3)',textAlign:'center',margin:'.5rem 0',lineHeight:1.4}}>⏰ Les offres sont automatiquement supprimées après 4 heures.</p>
