@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '../../../lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const admin = getAdminClient();
 
@@ -81,21 +83,21 @@ export async function GET() {
         totalQty: d.totalQty,
         avgPrice: bestPrices.length >= 2
           ? Math.round(bestPrices.reduce((a, b) => a + b, 0) / bestPrices.length * 100) / 100
-          : (bestPrices.length === 1 && totalOffers >= 2)
+          : bestPrices.length === 1
             ? Math.round(bestPrices[0] * 100) / 100
             : null,
-        avgPriceCurrency: bestPrices.length >= 1 && (bestPrices.length >= 2 || totalOffers >= 2) ? bestCurrency : null,
+        avgPriceCurrency: bestPrices.length >= 1 ? bestCurrency : null,
         priceLabel: bestPrices.length >= 2 ? 'moy.' : 'dernier prix',
       };
     })
-    .filter(item => item.total >= 2)
+    .filter(item => item.total >= 1)
     .sort((a, b) => b.total - a.total)
     .slice(0, 10);
 
   // Top traders (filter offensive pseudos)
   const BLOCKED = /fuck|shit|ass|bitch|nazi|nigg/i;
   const topTraders = Object.entries(traderCounts)
-    .filter(([pseudo]) => pseudo !== 'Anonyme' && !BLOCKED.test(pseudo))
+    .filter(([pseudo]) => pseudo !== 'Anonyme' && pseudo !== 'AuditBot' && !BLOCKED.test(pseudo))
     .map(([pseudo, d]) => ({
       pseudo,
       total: d.sells + d.buys + d.responses,

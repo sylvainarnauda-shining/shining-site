@@ -138,11 +138,9 @@ export default function Home(){
 
   // Realtime
   useEffect(()=>{
-    let sub;
-    (async()=>{try{const{supabaseClient}=await import('../lib/supabase-client');if(!supabaseClient)return;
-      sub=supabaseClient.channel('live').on('postgres_changes',{event:'*',schema:'public',table:'offers'},()=>load()).on('postgres_changes',{event:'*',schema:'public',table:'settings'},()=>load()).subscribe()}catch(e){console.error(e)}})();
+    // Polling every 10s for live updates (no client-side Supabase needed)
     const iv=setInterval(load,10000);
-    return()=>{if(sub)sub.unsubscribe();clearInterval(iv)};
+    return()=>{clearInterval(iv)};
   },[load]);
 
   // Sort: shining first, then by date
